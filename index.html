@@ -36,11 +36,16 @@ button,select,input{font:inherit;color:inherit}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .status{min-height:1.4em;font-size:13px;color:var(--muted)}
 .surprise{width:100%;padding:10px;font-weight:600;background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.group{border-top:1px solid var(--line);padding-top:8px}
+h2.mini,.mini{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.group .hint{margin:0 0 6px}
+.linkbtn{align-self:flex-start;background:none;border:0;padding:2px 0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px}
+.linkbtn:hover{color:var(--warn)}
+.status:empty{display:none}
 .clothes .row{margin:4px 0}
 .clothes .row label{min-width:58px}
 .clothes .sw{width:24px;height:24px}
 .btn.small{padding:5px 10px;font-size:13px}
-.sizes .mini{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .sizes button{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:4px 12px;margin-right:4px;cursor:pointer;font-size:13px}
 .sizes button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .about{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;font-size:14px}
@@ -97,20 +102,29 @@ h2:first-child{margin-top:0}
       <button data-view="sitting">Sitting</button>
     </div>
     <div class="stage" id="stage"></div>
-    <button class="btn surprise" id="random">Surprise me ✦</button>
-    <div class="clothes" id="clothes" aria-label="Clothing colors"></div>
-    <div class="actions">
-      <button class="btn" id="dl-svg">Download SVG</button>
-      <button class="btn primary" id="dl-png">Download PNG</button>
-    </div>
-    <div class="row sizes" role="group" aria-label="PNG size"><span class="mini">PNG size</span><span id="sizes"></span></div>
-    <div class="row">
-      <button class="btn small" id="save-shortcut">Save to desktop</button>
-      <button class="btn small" id="copy-link">Copy link</button>
-      <button class="btn small" id="start-over">Start over</button>
-    </div>
     <div class="status" id="status" role="status" aria-live="polite"></div>
-    <p class="hint">Your avatar saves in this browser, so it will be here next time. To keep it anywhere, save a shortcut to your desktop or copy its link.</p>
+    <button class="btn surprise" id="random">Surprise me ✦</button>
+    <section class="group" aria-labelledby="clothes-h">
+      <h2 class="mini" id="clothes-h">Clothing colors</h2>
+      <div class="clothes" id="clothes"></div>
+    </section>
+    <section class="group" aria-labelledby="dl-h">
+      <h2 class="mini" id="dl-h">Download</h2>
+      <div class="actions">
+        <button class="btn primary" id="dl-png">Download PNG</button>
+        <button class="btn" id="dl-svg">Download SVG</button>
+      </div>
+      <div class="row sizes" role="group" aria-label="PNG size"><span class="mini">PNG size</span><span id="sizes"></span></div>
+    </section>
+    <section class="group" aria-labelledby="keep-h">
+      <h2 class="mini" id="keep-h">Keep your avatar</h2>
+      <p class="hint">It saves in this browser, so it will be here next time. To get it back anywhere, save a shortcut or copy its link.</p>
+      <div class="row">
+        <button class="btn small" id="save-shortcut">Save to desktop</button>
+        <button class="btn small" id="copy-link">Copy link</button>
+      </div>
+    </section>
+    <button class="linkbtn" id="start-over">Start over with a new avatar</button>
     <details class="about">
       <summary>About this tool</summary>
       <p><strong>Peeps maker</strong> by Christina Hilburger is licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. The illustrations are <a href="https://www.openpeeps.com/" target="_blank" rel="noopener">Open Peeps</a> by Pablo Stanley, released under CC0, so the avatars you make are yours to use with no credit needed.</p>
@@ -121,7 +135,7 @@ h2:first-child{margin-top:0}
 https://github.com/chilburger/peeps-maker</pre>
       <button class="btn small" data-copy="cite">Copy citation</button>
       <h2>Use it on your own page</h2>
-      <pre class="copybox" id="embed">&lt;iframe src="https://chilburger.github.io/peeps-maker/" title="Peeps maker avatar builder" loading="lazy" allow="clipboard-write" style="width:100%;max-width:960px;height:760px;border:1px solid #ccc;border-radius:8px"&gt;&lt;/iframe&gt;</pre>
+      <pre class="copybox" id="embed">&lt;iframe src="https://chilburger.github.io/peeps-maker/" title="Peeps maker avatar builder" loading="lazy" allow="clipboard-write" style="width:100%;max-width:960px;height:1000px;border:1px solid #ccc;border-radius:8px"&gt;&lt;/iframe&gt;</pre>
       <button class="btn small" data-copy="embed">Copy embed code</button>
       <p class="hint">Add your own colors and campus patches with options on the address: see the instructions on GitHub.</p>
     </details>

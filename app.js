@@ -304,10 +304,11 @@
 
   // ---------- tabs ----------
   const TABS = [
-    ['outfit', 'Outfit'], ['skin', 'Skin'], ['hair', 'Hair'], ['face', 'Face'], ['beard', 'Facial hair'],
-    ['accessory', 'Glasses'], ['mask', 'Mask'], ['backdrop', 'Backdrop'], ['patches', 'Patches'],
+    // build order: the person, then their style, then what frames them
+    ['skin', 'Skin'], ['hair', 'Hair'], ['face', 'Face'], ['beard', 'Facial hair'], ['extras', 'Glasses & mask'],
+    ['outfit', 'Outfit'], ['patches', 'Patches'], ['backdrop', 'Backdrop'],
   ];
-  let tab = 'outfit';
+  let tab = 'skin';
   const tabsEl = document.getElementById('tabs'), bodyEl = document.getElementById('tabbody');
   tabsEl.innerHTML = TABS.map(([id, t]) => `<button role="tab" data-tab="${id}" aria-selected="${id === tab}">${t}</button>`).join('');
   tabsEl.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; tabsEl.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', x === b)); renderTab(); });
@@ -381,8 +382,7 @@
         : optionGrid('face', S.face, false);
     }
     else if (tab === 'beard') h = swatchRow('hair', 'Color') + '<p class="hint">Facial hair shares the hair color.</p>' + optionGrid('beard', S.beard, true);
-    else if (tab === 'accessory') h = optionGrid('accessory', S.accessory, true);
-    else if (tab === 'mask') h = optionGrid('mask', S.mask, true);
+    else if (tab === 'extras') h = '<h2>Glasses</h2>' + optionGrid('accessory', S.accessory, true) + '<h2>Mask</h2>' + optionGrid('mask', S.mask, true);
     else if (tab === 'backdrop') {
       h += '<h2>Shape</h2><div class="grid">';
       for (const [id, name] of SHAPES) {

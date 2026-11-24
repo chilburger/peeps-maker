@@ -10,7 +10,7 @@ Paste this into a LibGuide **Media/Widget** asset (Add/Reorder → Media/Widget)
 
 ```html
 <iframe src="https://chilburger.github.io/peeps-maker/" title="Avatar maker"
-  loading="lazy" allow="clipboard-write" style="width:100%;max-width:960px;height:760px;border:1px solid #ccc;border-radius:8px"></iframe>
+  loading="lazy" allow="clipboard-write" style="width:100%;max-width:960px;height:1000px;border:1px solid #ccc;border-radius:8px"></iframe>
 ```
 
 To hide the tool behind a button, paste this instead:
@@ -22,7 +22,7 @@ To hide the tool behind a button, paste this instead:
 </button>
 <div id="peeps-frame-wrap" hidden style="margin-top:12px">
   <iframe src="https://chilburger.github.io/peeps-maker/" title="Avatar maker"
-    loading="lazy" allow="clipboard-write" style="width:100%;max-width:960px;height:760px;border:1px solid #ccc;border-radius:8px"></iframe>
+    loading="lazy" allow="clipboard-write" style="width:100%;max-width:960px;height:1000px;border:1px solid #ccc;border-radius:8px"></iframe>
 </div>
 <script>
   (function () {
