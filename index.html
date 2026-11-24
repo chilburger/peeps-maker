@@ -42,6 +42,9 @@ h2.mini,.mini{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform
 .linkbtn{align-self:flex-start;background:none;border:0;padding:2px 0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px}
 .linkbtn:hover{color:var(--warn)}
 .status:empty{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:4px 10px;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .clothes .row{margin:4px 0;border-radius:8px;padding:2px 4px;margin-left:-4px}
 .clothes .row.focus{background:var(--accent-soft);outline:2px solid var(--accent)}
 .clothes .row .mini{margin:0 4px 0 0}

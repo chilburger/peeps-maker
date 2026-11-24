@@ -34,7 +34,7 @@
   // palettes: [color, name]
   const SKIN = [['#FFE0BD', 'Light'], ['#F6C9A0', 'Fair'], ['#E8B080', 'Medium'], ['#C68642', 'Tan'], ['#A56B43', 'Brown'], ['#7A4E2D', 'Deep'], ['#5C3A21', 'Dark'], ['#3F2A1B', 'Ebony']];
   const HAIRC = [['#1A1A1A', 'Black'], ['#3B2219', 'Dark brown'], ['#5A3825', 'Brown'], ['#8B5A2B', 'Chestnut'], ['#B87333', 'Auburn'], ['#D9A441', 'Blonde'],
-    ['#9AA0A6', 'Grey'], ['#E6E6E6', 'White'], ['#E67EA6', 'Pink'], ['#6C8EE0', 'Blue'], ['#57B894', 'Green'], ['#8E6FD1', 'Purple']];
+    ['#9AA0A6', 'Grey'], ['#C9CDD2', 'Silver'], ['#E6E6E6', 'White'], ['#E67EA6', 'Pink'], ['#6C8EE0', 'Blue'], ['#57B894', 'Green'], ['#8E6FD1', 'Purple']];
   const CLOTH = [['#7FA7D9', 'Blue'], ['#5B7FB4', 'Navy'], ['#1F4E9C', 'Royal'], ['#57B894', 'Green'], ['#E4915B', 'Orange'], ['#E06C7A', 'Red'], ['#E67EA6', 'Pink'],
     ['#8E6FD1', 'Purple'], ['#F2C94C', 'Yellow'], ['#6B7280', 'Slate'], ['#3A3A3A', 'Charcoal'], ['#222222', 'Black'], ['#F5F5F5', 'White'], ['#C68642', 'Tan']];
   const BG = [['#F2E9D8', 'Cream'], ['#FBE3D6', 'Blush'], ['#DCEFE4', 'Mint'], ['#D7ECF0', 'Sky'], ['#E9E1F4', 'Lilac'], ['#FBEFC7', 'Butter'], ['#FFFFFF', 'White'], ['transparent', 'Transparent']];
@@ -51,15 +51,16 @@
     frameColor: 'accent', cupColor: 'accent', paperColor: 'accent', computerColor: 'accent', knifeColor: 'accent',
     pocketColor: 'accent', wheelchairColor: 'accent', bikeFrameColor: 'accent', bikeIronColor: 'accent', prothesisColor: 'accent',
   };
-  const COLOR_LABEL = { skin: 'Skin', hair: 'Hair color', top: 'Top', pants: 'Pants', jacket: 'Jacket', shoes: 'Shoes', hat: 'Headwear', accent: 'Props', bg: 'Background', backdrop: 'Shape color', second: 'Second color' };
-  const PALETTE = { skin: SKIN, hair: HAIRC, top: CLOTH, pants: CLOTH, jacket: CLOTH, shoes: CLOTH, hat: CLOTH, accent: CLOTH, second: CLOTH, bg: BG, backdrop: BACKDROP_C };
+  const COLOR_LABEL = { skin: 'Skin', hair: 'Hair color', top: 'Top', pants: 'Pants', jacket: 'Jacket', shoes: 'Shoes', hat: 'Headwear', accent: 'Props', bg: 'Background', backdrop: 'Shape color', second: 'Second color', hair2: 'Second hair color' };
+  const PALETTE = { skin: SKIN, hair: HAIRC, top: CLOTH, pants: CLOTH, jacket: CLOTH, shoes: CLOTH, hat: CLOTH, accent: CLOTH, second: CLOTH, hair2: HAIRC, bg: BG, backdrop: BACKDROP_C };
 
   // ---------- state ----------
   const DEFAULT = {
     view: 'bust',
     body: { bust: 'Hoodie', standing: 'ShirtColorTee', sitting: 'MidColorTee' },
     hair: 'ShortOne', face: 'Smile', beard: null, accessory: null, mask: null, backdrop: 'circle',
-    colors: { skin: '#E8B080', hair: '#1A1A1A', top: '#7FA7D9', pants: '#3A3A3A', jacket: '#5B7FB4', shoes: '#F5F5F5', hat: '#7FA7D9', accent: '#F2C94C', bg: '#DCEFE4', backdrop: '#F7C948', second: '#1A1A1A' },
+    colors: { skin: '#E8B080', hair: '#1A1A1A', top: '#7FA7D9', pants: '#3A3A3A', jacket: '#5B7FB4', shoes: '#F5F5F5', hat: '#7FA7D9', accent: '#F2C94C', bg: '#DCEFE4', backdrop: '#F7C948', second: '#1A1A1A', hair2: '#C9CDD2' },
+    hairMix: { style: null, pos: 0.42 },
     patches: [],
   };
   let S = clone(DEFAULT);
@@ -173,6 +174,45 @@
     return `<defs>${GAP_FILTER}<mask id="pg-${name}" maskUnits="userSpaceOnUse" x="${x}" y="${y}" width="${w}" height="${h}"><g filter="url(#peeps-gaps)">${ink}</g></mask></defs>` +
       `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" mask="url(#pg-${name})" pointer-events="none"/>`;
   }
+  // Two hair colors: the main color, plus a second color laid on in a pattern (a streak,
+  // highlights, ombre...), both seen through the same mask of the hair.
+  const HAIR_PATTERNS = [['', 'None'], ['streak', 'Streak'], ['two', 'Two streaks'], ['highlights', 'Highlights'], ['ombre', 'Ombré'], ['tips', 'Tips'], ['split', 'Split']];
+  const PATTERN_HAS_POS = ['streak', 'two', 'highlights', 'split'];
+  function hairColorLayers(name, part, st) {
+    const c = st.colors, mix = st.hairMix || {}, own = part.colors.includes('hairColor');
+    if (!own && !tintable('hair', name)) return '';
+    const [vx, vy, vw, vh] = part.viewBox.split(' ').map(Number);
+    const X = vx - 60, Y = vy - 60, W = vw + 120, H = vh + 120, id = `pm-hair-${name}`;
+    // styles with their own hair-color areas use those; ink-drawn styles use the shrunk ink
+    const maskBody = own
+      ? part.svg.replace(/(fill|stroke)="([^"]*)"/g, (m, a, v) => (a === 'fill' ? (v === '{{hairColor}}' ? 'fill="#fff"' : v === 'none' ? m : 'fill="#000"') : `${a}="none"`))
+      : `<g filter="url(#peeps-tint)">${inkMask(part.svg)}</g>`;
+    let defs = `${own ? '' : TINT_FILTER}<mask id="${id}" maskUnits="userSpaceOnUse" x="${X}" y="${Y}" width="${W}" height="${H}">${maskBody}</mask>`;
+    const m = `mask="url(#${id})" pointer-events="none"`;
+    let out = !own && !isInk(c.hair) ? `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="${c.hair}" ${m}/>` : '';
+    const col = c.hair2, pos = mix.pos == null ? 0.42 : mix.pos, n = (v) => v.toFixed(1);
+    // a streak that starts narrow at the part and sweeps down and outward with a soft S-curve
+    const band = (center, bw) => {
+      const x0 = vx + vw * center, t = bw * 0.12, b = bw / 2, wv = vw * 0.07;
+      // centre line: down from the part, bowing out then back, drifting outward
+      const pts = [[x0, vy - 20], [x0 - vw * 0.05 - wv, vy + vh * 0.25], [x0 - vw * 0.12 + wv * 0.6, vy + vh * 0.5], [x0 - vw * 0.2, vy + vh * 0.8], [x0 - vw * 0.24, Y + H]];
+      const wid = [t, b * 0.75, b, b, b * 0.9];
+      const L1 = pts.map(([x, y], i) => [x - wid[i], y]), R1 = pts.map(([x, y], i) => [x + wid[i], y]).reverse();
+      const smooth = (P0) => P0.map(([x, y], i) => (i ? ` S${n((P0[i - 1][0] + x) / 2)},${n((P0[i - 1][1] + y) / 2)} ${n(x)},${n(y)}` : `${n(x)},${n(y)}`)).join('');
+      return `<path d="M${smooth(L1)} L${smooth(R1)} Z" fill="${col}" ${m}/>`;
+    };
+    if (mix.style === 'streak') out += band(pos, vw * 0.11);
+    if (mix.style === 'two') out += band(pos, vw * 0.09) + band(Math.min(0.95, pos + 0.3), vw * 0.09);
+    if (mix.style === 'highlights') for (const d of [-0.18, -0.06, 0.06, 0.18]) out += band(pos + d, vw * 0.035);
+    if (mix.style === 'split') out += `<rect x="${X}" y="${Y}" width="${n(vw * pos + 60)}" height="${H}" fill="${col}" ${m}/>`;
+    if (mix.style === 'tips') out += `<rect x="${X}" y="${n(vy + vh * 0.7)}" width="${W}" height="${n(vh * 0.3 + 60)}" fill="${col}" ${m}/>`;
+    if (mix.style === 'ombre') {
+      const gid = `pgr-${name}-${c.hair.slice(1)}-${col.slice(1)}`;
+      defs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0.35" stop-color="${c.hair}" stop-opacity="0"/><stop offset="0.85" stop-color="${col}"/></linearGradient>`;
+      out += `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#${gid})" ${m}/>`;
+    }
+    return out ? `<defs>${defs}</defs>${out}` : '';
+  }
   // a color layer over the thick black areas of one part; minY/maxY (0-1) limit it to a band,
   // eg pants only, so shoes and shirt shading keep their ink
   function tintLayer(id, part, color, maxY, minY, key, minX, maxX) {
@@ -199,7 +239,9 @@
     const g = (cat, name) => {
       if (!name || !P[cat][name]) return '';
       const svg = P[cat][name].svg;
-      let tint = tintable(cat, name) && !isInk(c.hair) ? tintLayer(`${cat}-${name}`, P[cat][name], c.hair, 0, 0, 'hair') : '';
+      let tint = '';
+      if (cat === 'hair') tint = hairColorLayers(name, P.hair[name], st);
+      else if (tintable(cat, name) && !isInk(c.hair)) tint = tintLayer(`${cat}-${name}`, P[cat][name], c.hair, 0, 0, 'hair');
       if (cat === 'hair' && HAIR_GAPS.includes(name)) tint += gapLayer(name, P[cat][name], shine(c.hair));
       // dark lenses: their glare is a gap in the ink, so lay a light glare color underneath
       const glare = cat === 'accessory' && GLARE[name] ? `${glareDefs(GLARE[name])}<g filter="url(#peeps-close-${GLARE[name]})">${tintCopy(svg, GLARE_COLOR)}</g>` : '';
@@ -518,8 +560,15 @@
     } else if (tab === 'skin') {
       h = swatchRow('skin') + '<p class="hint">Use the color picker at the end of the row for any other shade.</p>';
     } else if (tab === 'hair') {
-      if (hairHasColor(S.hair)) h += swatchRow('hair');
-      else h += '<p class="hint">This style is a hat or head covering, so it has no hair color.</p>';
+      if (hairHasColor(S.hair)) {
+        const mix = S.hairMix || {};
+        h += swatchRow('hair') + '<div class="row" role="group" aria-label="Two-tone hair"><label>Two-tone</label><div class="chips">' +
+          HAIR_PATTERNS.map(([id, nm]) => `<button class="chip" data-hairmix="${id}" aria-pressed="${(mix.style || '') === id}">${nm}</button>`).join('') + '</div></div>';
+        if (mix.style) {
+          h += swatchRow('hair2', 'Second color');
+          if (PATTERN_HAS_POS.includes(mix.style)) h += `<div class="row"><label for="hm-pos">Position</label><input id="hm-pos" type="range" min="5" max="95" value="${Math.round((mix.pos == null ? 0.42 : mix.pos) * 100)}" data-hairpos></div>`;
+        }
+      } else h += '<p class="hint">This style is a hat or head covering, so it has no hair color.</p>';
       if (used.has('hat')) h += swatchRow('hat');
       h += optionGrid('hair', S.hair, false);
     }
@@ -555,6 +604,8 @@
     if (o) { setPart(o.dataset.cat, o.dataset.name || null); return; }
     const sw = e.target.closest('button[data-color]');
     if (sw) { S.colors[sw.dataset.color] = sw.dataset.val; save(); render(); renderTab(); return; }
+    const hm = e.target.closest('[data-hairmix]');
+    if (hm) { S.hairMix = Object.assign({ pos: 0.42 }, S.hairMix, { style: hm.dataset.hairmix || null }); save(); render(); renderTab(); return; }
     const sh = e.target.closest('[data-shape]');
     if (sh) { S.backdrop = sh.dataset.shape || null; save(); render(); renderTab(); return; }
     const ap = e.target.closest('[data-addpatch]');
@@ -570,6 +621,7 @@
   bodyEl.addEventListener('input', (e) => {
     const t = e.target;
     if (t.matches('input[type=color]')) { S.colors[t.dataset.color] = t.value; save(); render(); }
+    if (t.matches('[data-hairpos]')) { S.hairMix = Object.assign({}, S.hairMix, { pos: Number(t.value) / 100 }); save(); render(); }
   });
   bodyEl.addEventListener('change', (e) => { if (e.target.matches('input[type=color]')) renderTab(); });
 
@@ -598,6 +650,8 @@
     st.accessory = Math.random() < 0.35 ? pick(list('accessory')) : null;
     st.mask = Math.random() < 0.1 ? pick(list('mask')) : null;
     st.colors.skin = pick(SKIN)[0]; st.colors.hair = pick(HAIRC)[0];
+    st.hairMix = Math.random() < 0.15 ? { style: pick(HAIR_PATTERNS.slice(1))[0], pos: 0.3 + Math.random() * 0.3 } : { style: null, pos: 0.42 };
+    st.colors.hair2 = pick(HAIRC)[0];
     for (const k of ['top', 'pants', 'jacket', 'shoes', 'hat', 'accent']) st.colors[k] = pick(CLOTH)[0];
     st.backdrop = Math.random() < 0.5 ? pick(SHAPES.slice(1))[0] : null;
     st.colors.backdrop = pick(BACKDROP_C)[0];
