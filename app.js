@@ -156,13 +156,31 @@
   function inkMask(svg) {
     return svg.replace(/(fill|stroke)="([^"]*)"/g, (m, a, v) => (a === 'fill' ? (v === '{{outlineColor}}' ? 'fill="#fff"' : v === 'none' ? m : 'fill="#000"') : `${a}="none"`));
   }
+  // Strand gaps: in some hairstyles the strands are gaps in the ink where the skin underneath
+  // shows through. They were white paper in the original art, so they get a highlight: white on
+  // black hair, a lighter shade on colored hair. Only gaps inside the solid hair mass count.
+  const HAIR_GAPS = L.hairGaps || [];
+  const GAP_FILTER = '<filter id="peeps-gaps" x="-5%" y="-5%" width="110%" height="110%"><feMorphology in="SourceGraphic" operator="erode" radius="10" result="e"/><feMorphology in="e" operator="dilate" radius="10" result="o"/><feMorphology in="o" operator="dilate" radius="9" result="d"/><feMorphology in="d" operator="erode" radius="9" result="c"/><feComposite in="c" in2="SourceGraphic" operator="out"/></filter>';
+  function shine(hex) {
+    if (isInk(hex)) return '#FFFFFF';
+    const n = parseInt(hex.slice(1), 16), mix = (v) => Math.round(v + (255 - v) * 0.55);
+    return '#' + [n >> 16, (n >> 8) & 255, n & 255].map((v) => mix(v).toString(16).padStart(2, '0')).join('');
+  }
+  function gapLayer(name, part, color) {
+    const [vx, vy, vw, vh] = part.viewBox.split(' ').map(Number);
+    const ink = part.svg.replace(/(fill|stroke)="([^"]*)"/g, (m, a, v) => (a === 'fill' && v === '{{outlineColor}}' ? 'fill="#fff"' : `${a}="none"`));
+    const x = vx - 60, y = vy - 60, w = vw + 120, h = vh + 120;
+    return `<defs>${GAP_FILTER}<mask id="pg-${name}" maskUnits="userSpaceOnUse" x="${x}" y="${y}" width="${w}" height="${h}"><g filter="url(#peeps-gaps)">${ink}</g></mask></defs>` +
+      `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" mask="url(#pg-${name})" pointer-events="none"/>`;
+  }
   // a color layer over the thick black areas of one part; minY/maxY (0-1) limit it to a band,
   // eg pants only, so shoes and shirt shading keep their ink
-  function tintLayer(id, part, color, maxY, minY, key) {
+  function tintLayer(id, part, color, maxY, minY, key, minX, maxX) {
     const [vx, vy, vw, vh] = (part.viewBox || `0 0 ${part.w} ${part.h}`).split(' ').map(Number);
-    const x = vx - 60, w = vw + 120;
+    // minX/maxX are in the part's own units, for trimming specks at a garment's edge
+    const x = minX != null ? minX : vx - 60, w = (maxX != null ? maxX : vx + vw + 60) - x;
     const y = minY ? vy + vh * minY : vy - 60, h = (maxY ? vy + vh * maxY : vy + vh + 60) - y;
-    return `<defs>${TINT_FILTER}<mask id="pm-${id}" maskUnits="userSpaceOnUse" x="${x}" y="${vy - 60}" width="${w}" height="${vh + 120}"><g filter="url(#peeps-tint)">${inkMask(part.svg)}</g></mask></defs>` +
+    return `<defs>${TINT_FILTER}<mask id="pm-${id}" maskUnits="userSpaceOnUse" x="${vx - 60}" y="${vy - 60}" width="${vw + 120}" height="${vh + 120}"><g filter="url(#peeps-tint)">${inkMask(part.svg)}</g></mask></defs>` +
       `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" mask="url(#pm-${id})" pointer-events="none"/>`;
   }
   // dark lenses and the size of their glare gap (grow-then-shrink radius)
@@ -181,7 +199,8 @@
     const g = (cat, name) => {
       if (!name || !P[cat][name]) return '';
       const svg = P[cat][name].svg;
-      const tint = tintable(cat, name) && !isInk(c.hair) ? tintLayer(`${cat}-${name}`, P[cat][name], c.hair, 0, 0, 'hair') : '';
+      let tint = tintable(cat, name) && !isInk(c.hair) ? tintLayer(`${cat}-${name}`, P[cat][name], c.hair, 0, 0, 'hair') : '';
+      if (cat === 'hair' && HAIR_GAPS.includes(name)) tint += gapLayer(name, P[cat][name], shine(c.hair));
       // dark lenses: their glare is a gap in the ink, so lay a light glare color underneath
       const glare = cat === 'accessory' && GLARE[name] ? `${glareDefs(GLARE[name])}<g filter="url(#peeps-close-${GLARE[name]})">${tintCopy(svg, GLARE_COLOR)}</g>` : '';
       return `<g data-layer="${cat}" transform="translate(${A[cat][0]} ${A[cat][1]})"><g transform="${offT(cat, name)}">${glare}${paint(svg, c)}${tint}</g></g>`;
@@ -209,7 +228,7 @@
     const view = st.view, body = st.body[view], part = P[view][body];
     const { str } = headT(view, body);
     const g = garment(view, body), inkColor = g.ink ? st.colors[g.ink.key] : null;
-    const tint = inkColor && !isInk(inkColor) ? tintLayer(`${view}-${body}`, part, inkColor, g.ink.maxY, g.ink.minY, g.ink.key) : '';
+    const tint = inkColor && !isInk(inkColor) ? tintLayer(`${view}-${body}`, part, inkColor, g.ink.maxY, g.ink.minY, g.ink.key, g.ink.minX, g.ink.maxX) : '';
     return `<g data-layer="body">${paint(part.svg, st.colors)}${tint}</g><g data-layer="patches">${patchesSVG(st, withSel)}</g><g data-layer="head" transform="${str}">${headSVG(st)}</g>`;
   }
 

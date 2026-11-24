@@ -1051,7 +1051,8 @@ window.PEEP_LAYERS = {
      "key": "pants",
      "label": "Pants",
      "maxY": 0.88,
-     "minY": 0.38
+     "minY": 0.38,
+     "maxX": 1100
     }
    },
    "ShirtProthesisColorPants": {
@@ -1074,7 +1075,8 @@ window.PEEP_LAYERS = {
      "key": "pants",
      "label": "Shorts",
      "maxY": 0.68,
-     "minY": 0.38
+     "minY": 0.38,
+     "maxX": 1100
     }
    },
    "WalkingColorPants": {
@@ -1174,5 +1176,21 @@ window.PEEP_LAYERS = {
     }
    }
   }
- }
+ },
+ "hairGaps": [
+  "Cornrows",
+  "CornrowsLight",
+  "MediumBangsOne",
+  "LongBangs",
+  "BunTwo",
+  "BunClip",
+  "BunKnots",
+  "BantuKnots",
+  "DreadsOne",
+  "DreadsTwo",
+  "Twists",
+  "TwistsTwo",
+  "ShavedThree",
+  "MohawkKnots"
+ ]
 };
