@@ -1,0 +1,5 @@
+{
+  "patches": [
+    { "id": "two-hundred", "name": "200 badge", "src": "two-hundred.svg" }
+  ]
+}

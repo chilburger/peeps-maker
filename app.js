@@ -8,6 +8,18 @@
   const STATE_KEY = 'peeps-avatar-v1';
   const NS = 'http://www.w3.org/2000/svg';
 
+  // ---------- embed-address options ----------
+  // ?accent=1f4e9c  ?bg=e3ebf8  ?patches=https://example.edu/patches.json
+  const Q = new URLSearchParams(location.search);
+  const hex = (v) => (v && /^#?[0-9a-f]{6}$/i.test(v) ? '#' + v.replace('#', '') : null);
+  const ACCENT = hex(Q.get('accent'));
+  if (ACCENT) {
+    const r = document.documentElement.style;
+    r.setProperty('--accent', ACCENT);
+    r.setProperty('--accent-soft', `color-mix(in srgb, ${ACCENT} 14%, white)`);
+  }
+  const BG_PARAM = hex(Q.get('bg'));
+
   // ---------- layer config (admin drafts override the published file) ----------
   const clone = (o) => JSON.parse(JSON.stringify(o));
   let L = clone(window.PEEP_LAYERS);
@@ -42,22 +54,47 @@
     patches: [],
   };
   let S = clone(DEFAULT);
+  if (BG_PARAM) DEFAULT.colors.bg = BG_PARAM;
+  if (ACCENT) DEFAULT.colors.top = ACCENT;
+  S = clone(DEFAULT);
   try { const s = JSON.parse(localStorage.getItem(STATE_KEY)); if (s && s.body) S = Object.assign(clone(DEFAULT), s); } catch (e) {}
   const save = () => { try { localStorage.setItem(STATE_KEY, JSON.stringify(S)); } catch (e) {} };
   let selectedPatch = null;
 
   // ---------- patches library ----------
-  const PATCHES = (window.PEEP_PATCHES || []).map((p) => ({ ...p, href: p.svg ? 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(p.svg))) : p.src, w: 120, h: 120 }));
-  PATCHES.forEach((p) => {
-    // read the aspect ratio; inline file-based patches so downloads keep them
-    const img = new Image();
-    img.onload = () => { p.w = img.naturalWidth || 120; p.h = img.naturalHeight || 120; render(); };
-    img.src = p.href;
-    if (!p.svg && p.src) {
-      fetch(p.src).then((r) => r.blob()).then((b) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); }))
-        .then((url) => { p.href = url; render(); }).catch(() => {});
-    }
+  const IMG_TYPES = /^image\/(svg\+xml|png|jpeg|webp|gif)$/;
+  const toDataURL = (blob) => new Promise((res, rej) => {
+    if (!IMG_TYPES.test(blob.type)) return rej(new Error('not an image'));
+    const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob);
   });
+  let PATCHES = [];
+  function addPatches(defs, base) {
+    PATCHES = defs.filter((p) => p && p.id && (p.svg || p.src)).map((p) => {
+      const src = p.src ? new URL(p.src, base).href : null;
+      return { id: String(p.id), name: String(p.name || p.id), svg: p.svg, src, w: 120, h: 120,
+        href: p.svg ? 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(p.svg))) : src };
+    });
+    PATCHES.forEach((p) => {
+      // read the aspect ratio
+      const img = new Image();
+      img.onload = () => { p.w = img.naturalWidth || 120; p.h = img.naturalHeight || 120; render(); if (tab === 'patches') renderTab(); };
+      img.src = p.href;
+      // inline file-based patches so downloads keep them (needs the host to allow cross-site requests)
+      if (!p.svg && p.src) fetch(p.src).then((r) => r.blob()).then(toDataURL).then((url) => { p.href = url; render(); }).catch(() => { p.noInline = true; });
+    });
+  }
+  const remote = Q.get('patches');
+  const devHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  if (remote && (/^https:\/\//i.test(remote) || (devHost && /^http:\/\/(localhost|127\.0\.0\.1)[:/]/i.test(remote)))) {
+    fetch(remote).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((j) => {
+        const defs = (Array.isArray(j) ? j : j.patches || []).map((p) => ({ id: p.id, name: p.name, src: p.src })); // remote lists may only point to files
+        addPatches(defs, remote); render(); renderTab();
+      })
+      .catch(() => { addPatches(window.PEEP_PATCHES || [], location.href); status('Couldn’t load this site’s patches, so the standard ones are shown.'); renderTab(); });
+  } else {
+    addPatches(window.PEEP_PATCHES || [], location.href);
+  }
   const patchById = (id) => PATCHES.find((p) => p.id === id);
 
   // ---------- helpers ----------
@@ -284,7 +321,7 @@
     if (sw) { S.colors[sw.dataset.color] = sw.dataset.val; save(); render(); renderTab(); return; }
     const ap = e.target.closest('[data-addpatch]');
     if (ap) {
-      const spot = (L.patchSpot[S.view] || {})[curBody()] || { dx: 95, dy: 260, size: 110 };
+      const spot = (L.patchSpot[S.view] || {})[curBody()] || { dx: 110, dy: 340, size: 110 };
       S.patches.push({ pid: ap.dataset.addpatch, dx: spot.dx + S.patches.length * 18, dy: spot.dy + S.patches.length * 18, size: spot.size, rot: 0 });
       selectedPatch = S.patches.length - 1; save(); render(); renderTab(); status('Patch added. Drag it into place.'); return;
     }
@@ -347,6 +384,7 @@
   });
   document.getElementById('dl-png').addEventListener('click', () => {
     const svg = fullSVG(S, false), img = new Image();
+    if (S.patches.some((pt) => (patchById(pt.pid) || {}).noInline)) status('Some patches come from a site that blocks downloads, so they may be missing from the PNG.');
     img.onload = () => {
       const c = document.createElement('canvas'); c.width = c.height = 1024;
       c.getContext('2d').drawImage(img, 0, 0, 1024, 1024);
