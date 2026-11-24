@@ -87,7 +87,9 @@
     PATCHES = defs.filter((p) => p && p.id && (p.svg || p.src)).map((p) => {
       const src = p.src ? new URL(p.src, base).href : null;
       // tilt: false keeps a patch upright, for marks whose rules forbid angling them
-      return { id: String(p.id), name: String(p.name || p.id), svg: p.svg, src, w: 120, h: 120, noTilt: p.tilt === false,
+      // scale: starting size relative to a chest badge; center: start in the middle of the chest
+      const scale = Math.min(4, Math.max(0.3, Number(p.scale) || 1));
+      return { id: String(p.id), name: String(p.name || p.id), svg: p.svg, src, w: 120, h: 120, noTilt: p.tilt === false, scale, center: p.center === true,
         href: p.svg ? 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(p.svg))) : src };
     });
     PATCHES.forEach((p) => {
@@ -104,7 +106,7 @@
   if (remote && (/^https:\/\//i.test(remote) || (devHost && /^http:\/\/(localhost|127\.0\.0\.1)[:/]/i.test(remote)))) {
     fetch(remote).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then((j) => {
-        const defs = (Array.isArray(j) ? j : j.patches || []).map((p) => ({ id: p.id, name: p.name, src: p.src, tilt: p.tilt })); // remote lists may only point to files
+        const defs = (Array.isArray(j) ? j : j.patches || []).map((p) => ({ id: p.id, name: p.name, src: p.src, tilt: p.tilt, scale: p.scale, center: p.center })); // remote lists may only point to files
         addPatches(defs, remote); render(); renderTab();
       })
       .catch(() => { addPatches(window.PEEP_PATCHES || [], location.href); status('Couldn’t load this site’s patches, so the standard ones are shown.'); renderTab(); });
@@ -716,7 +718,8 @@
     const ap = e.target.closest('[data-addpatch]');
     if (ap) {
       const spot = (L.patchSpot[S.view] || {})[curBody()] || { dx: 110, dy: 340, size: 110 };
-      S.patches.push({ pid: ap.dataset.addpatch, dx: spot.dx + S.patches.length * 18, dy: spot.dy + S.patches.length * 18, size: spot.size, rot: 0 });
+      const def = patchById(ap.dataset.addpatch) || {}, step = S.patches.length * 18;
+      S.patches.push({ pid: ap.dataset.addpatch, dx: (def.center ? 0 : spot.dx) + step, dy: spot.dy + step, size: Math.round(spot.size * (def.scale || 1)), rot: 0 });
       selectedPatch = S.patches.length - 1; save(); render(); renderTab(); status('Patch added. Drag it into place.'); return;
     }
     const sp = e.target.closest('[data-selpatch]');
