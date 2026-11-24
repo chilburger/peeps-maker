@@ -51,16 +51,16 @@
     frameColor: 'accent', cupColor: 'accent', paperColor: 'accent', computerColor: 'accent', knifeColor: 'accent',
     pocketColor: 'accent', wheelchairColor: 'accent', bikeFrameColor: 'accent', bikeIronColor: 'accent', prothesisColor: 'accent',
   };
-  const COLOR_LABEL = { skin: 'Skin', hair: 'Hair color', top: 'Top', pants: 'Pants', jacket: 'Jacket', shoes: 'Shoes', hat: 'Headwear', accent: 'Props', bg: 'Background', backdrop: 'Shape color', second: 'Second color', hair2: 'Second hair color' };
-  const PALETTE = { skin: SKIN, hair: HAIRC, top: CLOTH, pants: CLOTH, jacket: CLOTH, shoes: CLOTH, hat: CLOTH, accent: CLOTH, second: CLOTH, hair2: HAIRC, bg: BG, backdrop: BACKDROP_C };
+  const COLOR_LABEL = { skin: 'Skin', hair: 'Hair color', top: 'Top', pants: 'Pants', jacket: 'Jacket', shoes: 'Shoes', hat: 'Headwear', accent: 'Props', bg: 'Background', backdrop: 'Shape color', second: 'Second color', hair2: 'Second hair color', hair3: 'Third hair color' };
+  const PALETTE = { skin: SKIN, hair: HAIRC, top: CLOTH, pants: CLOTH, jacket: CLOTH, shoes: CLOTH, hat: CLOTH, accent: CLOTH, second: CLOTH, hair2: HAIRC, hair3: HAIRC, bg: BG, backdrop: BACKDROP_C };
 
   // ---------- state ----------
   const DEFAULT = {
     view: 'bust',
     body: { bust: 'Hoodie', standing: 'ShirtColorTee', sitting: 'MidColorTee' },
     hair: 'ShortOne', face: 'Smile', beard: null, accessory: null, mask: null, backdrop: 'circle',
-    colors: { skin: '#E8B080', hair: '#1A1A1A', top: '#7FA7D9', pants: '#3A3A3A', jacket: '#5B7FB4', shoes: '#F5F5F5', hat: '#7FA7D9', accent: '#F2C94C', bg: '#DCEFE4', backdrop: '#F7C948', second: '#1A1A1A', hair2: '#C9CDD2' },
-    hairMix: { style: null, pos: 0.42 },
+    colors: { skin: '#E8B080', hair: '#1A1A1A', top: '#7FA7D9', pants: '#3A3A3A', jacket: '#5B7FB4', shoes: '#F5F5F5', hat: '#7FA7D9', accent: '#F2C94C', bg: '#DCEFE4', backdrop: '#F7C948', second: '#1A1A1A', hair2: '#C9CDD2', hair3: '#E67EA6' },
+    hairMix: { style: null, pos: 0.42 }, hairMix3: { style: null, pos: 0.7 },
     patches: [],
   };
   let S = clone(DEFAULT);
@@ -176,13 +176,15 @@
   }
   // Two hair colors: the main color, plus a second color laid on in a pattern (a streak,
   // highlights, ombre...), both seen through the same mask of the hair.
-  const HAIR_PATTERNS = [['', 'None'], ['streak', 'Streak'], ['two', 'Two streaks'], ['highlights', 'Highlights'], ['ombre', 'Ombré'], ['tips', 'Tips'], ['split', 'Split']];
+  const HAIR_PATTERNS = [['', 'None'], ['frame', 'Face-framing'], ['streak', 'Streak'], ['two', 'Two streaks'], ['highlights', 'Highlights'], ['ombre', 'Ombré'], ['tips', 'Tips'], ['split', 'Split']];
   const PATTERN_HAS_POS = ['streak', 'two', 'highlights', 'split'];
+  // the two extra hair-color slots: [state key, color key, label]
+  const HAIR_SLOTS = [['hairMix', 'hair2', 'Second color'], ['hairMix3', 'hair3', 'Third color']];
   function hairColorLayers(name, part, st) {
-    const c = st.colors, mix = st.hairMix || {}, own = part.colors.includes('hairColor');
+    const c = st.colors, own = part.colors.includes('hairColor');
     if (!own && !tintable('hair', name)) return '';
     const [vx, vy, vw, vh] = part.viewBox.split(' ').map(Number);
-    const X = vx - 60, Y = vy - 60, W = vw + 120, H = vh + 120, id = `pm-hair-${name}`;
+    const X = vx - 60, Y = vy - 60, W = vw + 120, H = vh + 120, id = `pm-hair-${name}`, n = (v) => v.toFixed(1);
     // styles with their own hair-color areas use those; ink-drawn styles use the shrunk ink
     const maskBody = own
       ? part.svg.replace(/(fill|stroke)="([^"]*)"/g, (m, a, v) => (a === 'fill' ? (v === '{{hairColor}}' ? 'fill="#fff"' : v === 'none' ? m : 'fill="#000"') : `${a}="none"`))
@@ -190,26 +192,53 @@
     let defs = `${own ? '' : TINT_FILTER}<mask id="${id}" maskUnits="userSpaceOnUse" x="${X}" y="${Y}" width="${W}" height="${H}">${maskBody}</mask>`;
     const m = `mask="url(#${id})" pointer-events="none"`;
     let out = !own && !isInk(c.hair) ? `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="${c.hair}" ${m}/>` : '';
-    const col = c.hair2, pos = mix.pos == null ? 0.42 : mix.pos, n = (v) => v.toFixed(1);
-    // a streak that starts narrow at the part and sweeps down and outward with a soft S-curve
-    const band = (center, bw) => {
-      const x0 = vx + vw * center, t = bw * 0.12, b = bw / 2, wv = vw * 0.07;
-      // centre line: down from the part, bowing out then back, drifting outward
-      const pts = [[x0, vy - 20], [x0 - vw * 0.05 - wv, vy + vh * 0.25], [x0 - vw * 0.12 + wv * 0.6, vy + vh * 0.5], [x0 - vw * 0.2, vy + vh * 0.8], [x0 - vw * 0.24, Y + H]];
-      const wid = [t, b * 0.75, b, b, b * 0.9];
-      const L1 = pts.map(([x, y], i) => [x - wid[i], y]), R1 = pts.map(([x, y], i) => [x + wid[i], y]).reverse();
-      const smooth = (P0) => P0.map(([x, y], i) => (i ? ` S${n((P0[i - 1][0] + x) / 2)},${n((P0[i - 1][1] + y) / 2)} ${n(x)},${n(y)}` : `${n(x)},${n(y)}`)).join('');
-      return `<path d="M${smooth(L1)} L${smooth(R1)} Z" fill="${col}" ${m}/>`;
-    };
-    if (mix.style === 'streak') out += band(pos, vw * 0.11);
-    if (mix.style === 'two') out += band(pos, vw * 0.09) + band(Math.min(0.95, pos + 0.3), vw * 0.09);
-    if (mix.style === 'highlights') for (const d of [-0.18, -0.06, 0.06, 0.18]) out += band(pos + d, vw * 0.035);
-    if (mix.style === 'split') out += `<rect x="${X}" y="${Y}" width="${n(vw * pos + 60)}" height="${H}" fill="${col}" ${m}/>`;
-    if (mix.style === 'tips') out += `<rect x="${X}" y="${n(vy + vh * 0.7)}" width="${W}" height="${n(vh * 0.3 + 60)}" fill="${col}" ${m}/>`;
-    if (mix.style === 'ombre') {
-      const gid = `pgr-${name}-${c.hair.slice(1)}-${col.slice(1)}`;
-      defs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0.35" stop-color="${c.hair}" stop-opacity="0"/><stop offset="0.85" stop-color="${col}"/></linearGradient>`;
-      out += `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#${gid})" ${m}/>`;
+
+    for (const [key, colorKey] of HAIR_SLOTS) {
+      const mix = st[key] || {}, col = c[colorKey];
+      if (!mix.style || !col) continue;
+      const pos = mix.pos == null ? 0.42 : mix.pos;
+      // a streak that starts narrow at the part and sweeps down and outward with a soft wave
+      const band = (center, bw) => {
+        const x0 = vx + vw * center, t = bw * 0.12, b = bw / 2, wv = vw * 0.07;
+        const pts = [[x0, vy - 20], [x0 - vw * 0.05 - wv, vy + vh * 0.25], [x0 - vw * 0.12 + wv * 0.6, vy + vh * 0.5], [x0 - vw * 0.2, vy + vh * 0.8], [x0 - vw * 0.24, Y + H]];
+        const wid = [t, b * 0.75, b, b, b * 0.9];
+        const L1 = pts.map(([x, y], i) => [x - wid[i], y]), R1 = pts.map(([x, y], i) => [x + wid[i], y]).reverse();
+        const smooth = (P0) => P0.map(([x, y], i) => (i ? ` S${n((P0[i - 1][0] + x) / 2)},${n((P0[i - 1][1] + y) / 2)} ${n(x)},${n(y)}` : `${n(x)},${n(y)}`)).join('');
+        return `<path d="M${smooth(L1)} L${smooth(R1)} Z" fill="${col}" ${m}/>`;
+      };
+      if (mix.style === 'streak') out += band(pos, vw * 0.11);
+      if (mix.style === 'two') out += band(pos, vw * 0.09) + band(Math.min(0.95, pos + 0.3), vw * 0.09);
+      if (mix.style === 'highlights') for (const d of [-0.18, -0.06, 0.06, 0.18]) out += band(pos + d, vw * 0.035);
+      if (mix.style === 'split') out += `<rect x="${X}" y="${Y}" width="${n(vw * pos + 60)}" height="${H}" fill="${col}" ${m}/>`;
+      if (mix.style === 'tips') out += `<rect x="${X}" y="${n(vy + vh * 0.7)}" width="${W}" height="${n(vh * 0.3 + 60)}" fill="${col}" ${m}/>`;
+      if (mix.style === 'ombre') {
+        const gid = `pgr-${key}-${name}-${c.hair.slice(1)}-${col.slice(1)}`;
+        defs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0.35" stop-color="${col}" stop-opacity="0"/><stop offset="0.85" stop-color="${col}"/></linearGradient>`;
+        out += `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#${gid})" ${m}/>`;
+      }
+      if (mix.style === 'frame') {
+        // A band of hair along the hairline: grow the visible skin outward, keep only the ring
+        // just outside it, and see it through the hair mask, so it follows each style's shape.
+        const thick = Math.round(40 + (mix.width == null ? 0.5 : mix.width) * 110), rid = `pr-${key}-${name}-${thick}`;
+        // copies shifted downward carry the band on down long hair below the jaw
+        const step = Math.round(vh * 0.07), drop = (src, out2) => `<feOffset in="${src}" dy="${step}" result="${src}1"/><feOffset in="${src}" dy="${step * 2}" result="${src}2"/><feOffset in="${src}" dy="${step * 3}" result="${src}3"/><feOffset in="${src}" dy="${step * 4}" result="${src}4"/>` +
+          `<feMerge result="${out2}"><feMergeNode in="${src}"/><feMergeNode in="${src}1"/><feMergeNode in="${src}2"/><feMergeNode in="${src}3"/><feMergeNode in="${src}4"/></feMerge>`;
+        const skin = part.svg.replace(/(fill|stroke)="([^"]*)"/g, (mm, a, v) => (a === 'fill' ? (v === '{{skinColor}}' ? 'fill="#fff"' : v === 'none' ? mm : 'fill="#000"') : `${a}="none"`));
+        defs += `<filter id="${rid}-f" x="-20%" y="-20%" width="140%" height="180%"><feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="s"/>` +
+                    // blur-then-threshold grows the shape with round corners (morphology would make square ones)
+          `<feGaussianBlur in="s" stdDeviation="${(thick / 2.2).toFixed(1)}" result="sb"/><feComponentTransfer in="sb" result="a"><feFuncA type="discrete" tableValues="0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1"/></feComponentTransfer>` +
+                    // the face shape with small gaps (inside the ear) closed, so the band has no holes
+          `<feGaussianBlur in="s" stdDeviation="6" result="sb2"/><feComponentTransfer in="sb2" result="b"><feFuncA type="discrete" tableValues="0 1 1 1 1 1 1 1"/></feComponentTransfer>` +
+          drop('a', 'A') + drop('b', 'B') +
+          `<feComposite in="A" in2="B" operator="out" result="ring"/><feFlood flood-color="#fff"/><feComposite in2="ring" operator="in"/></filter>` +
+          `<mask id="${rid}" maskUnits="userSpaceOnUse" x="${X}" y="${Y}" width="${W}" height="${H}"><g filter="url(#${rid}-f)">${skin}</g></mask>`;
+        // one side is cut along a slanted line from the part, so the color starts at the part
+        const side = mix.side || 'left', top = vx + vw * 0.56, bot = vx + vw * 0.4;
+        const shape = side === 'both' ? `<rect x="${X}" y="${Y}" width="${W}" height="${H}"`
+          : side === 'left' ? `<polygon points="${X},${Y} ${n(top)},${Y} ${n(bot)},${Y + H} ${X},${Y + H}"`
+          : `<polygon points="${n(top)},${Y} ${X + W},${Y} ${X + W},${Y + H} ${n(bot)},${Y + H}"`;
+        out += `<g ${m}>${shape} fill="${col}" mask="url(#${rid})"/></g>`;
+      }
     }
     return out ? `<defs>${defs}</defs>${out}` : '';
   }
@@ -561,13 +590,21 @@
       h = swatchRow('skin') + '<p class="hint">Use the color picker at the end of the row for any other shade.</p>';
     } else if (tab === 'hair') {
       if (hairHasColor(S.hair)) {
-        const mix = S.hairMix || {};
-        h += swatchRow('hair') + '<div class="row" role="group" aria-label="Two-tone hair"><label>Two-tone</label><div class="chips">' +
-          HAIR_PATTERNS.map(([id, nm]) => `<button class="chip" data-hairmix="${id}" aria-pressed="${(mix.style || '') === id}">${nm}</button>`).join('') + '</div></div>';
-        if (mix.style) {
-          h += swatchRow('hair2', 'Second color');
-          if (PATTERN_HAS_POS.includes(mix.style)) h += `<div class="row"><label for="hm-pos">Position</label><input id="hm-pos" type="range" min="5" max="95" value="${Math.round((mix.pos == null ? 0.42 : mix.pos) * 100)}" data-hairpos></div>`;
-        }
+        h += swatchRow('hair');
+        // second color, then a third once the second is in use
+        HAIR_SLOTS.forEach(([key, colorKey, lab], si) => {
+          if (si > 0 && !(S[HAIR_SLOTS[si - 1][0]] || {}).style) return;
+          const mix = S[key] || {};
+          h += `<div class="row" role="group" aria-label="${lab} pattern"><label>${si ? 'Third color' : 'Two-tone'}</label><div class="chips">` +
+            HAIR_PATTERNS.map(([id, nm]) => `<button class="chip" data-hairmix="${id}" data-slot="${key}" aria-pressed="${(mix.style || '') === id}">${nm}</button>`).join('') + '</div></div>';
+          if (!mix.style) return;
+          h += swatchRow(colorKey, lab);
+          if (PATTERN_HAS_POS.includes(mix.style)) h += `<div class="row"><label for="pos-${key}">Position</label><input id="pos-${key}" type="range" min="5" max="95" value="${Math.round((mix.pos == null ? 0.42 : mix.pos) * 100)}" data-hairpos="${key}"></div>`;
+          if (mix.style === 'frame') {
+            h += `<div class="row" role="group" aria-label="Side"><label>Side</label><div class="chips">${[['left', 'Left'], ['right', 'Right'], ['both', 'Both']].map(([v, t]) => `<button class="chip" data-hairside="${v}" data-slot="${key}" aria-pressed="${(mix.side || 'left') === v}">${t}</button>`).join('')}</div></div>` +
+              `<div class="row"><label for="w-${key}">Width</label><input id="w-${key}" type="range" min="0" max="100" value="${Math.round((mix.width == null ? 0.5 : mix.width) * 100)}" data-hairwidth="${key}"></div>`;
+          }
+        });
       } else h += '<p class="hint">This style is a hat or head covering, so it has no hair color.</p>';
       if (used.has('hat')) h += swatchRow('hat');
       h += optionGrid('hair', S.hair, false);
@@ -605,7 +642,13 @@
     const sw = e.target.closest('button[data-color]');
     if (sw) { S.colors[sw.dataset.color] = sw.dataset.val; save(); render(); renderTab(); return; }
     const hm = e.target.closest('[data-hairmix]');
-    if (hm) { S.hairMix = Object.assign({ pos: 0.42 }, S.hairMix, { style: hm.dataset.hairmix || null }); save(); render(); renderTab(); return; }
+    if (hm) {
+      const k = hm.dataset.slot; S[k] = Object.assign({ pos: 0.42 }, S[k], { style: hm.dataset.hairmix || null });
+      if (k === 'hairMix' && !S[k].style) S.hairMix3 = Object.assign({}, S.hairMix3, { style: null }); // no third without a second
+      save(); render(); renderTab(); return;
+    }
+    const hs = e.target.closest('[data-hairside]');
+    if (hs) { const k = hs.dataset.slot; S[k] = Object.assign({}, S[k], { side: hs.dataset.hairside }); save(); render(); renderTab(); return; }
     const sh = e.target.closest('[data-shape]');
     if (sh) { S.backdrop = sh.dataset.shape || null; save(); render(); renderTab(); return; }
     const ap = e.target.closest('[data-addpatch]');
@@ -621,7 +664,8 @@
   bodyEl.addEventListener('input', (e) => {
     const t = e.target;
     if (t.matches('input[type=color]')) { S.colors[t.dataset.color] = t.value; save(); render(); }
-    if (t.matches('[data-hairpos]')) { S.hairMix = Object.assign({}, S.hairMix, { pos: Number(t.value) / 100 }); save(); render(); }
+    if (t.dataset.hairpos) { const k = t.dataset.hairpos; S[k] = Object.assign({}, S[k], { pos: Number(t.value) / 100 }); save(); render(); }
+    if (t.dataset.hairwidth) { const k = t.dataset.hairwidth; S[k] = Object.assign({}, S[k], { width: Number(t.value) / 100 }); save(); render(); }
   });
   bodyEl.addEventListener('change', (e) => { if (e.target.matches('input[type=color]')) renderTab(); });
 
