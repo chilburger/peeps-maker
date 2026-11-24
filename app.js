@@ -84,7 +84,8 @@
   function addPatches(defs, base) {
     PATCHES = defs.filter((p) => p && p.id && (p.svg || p.src)).map((p) => {
       const src = p.src ? new URL(p.src, base).href : null;
-      return { id: String(p.id), name: String(p.name || p.id), svg: p.svg, src, w: 120, h: 120,
+      // tilt: false keeps a patch upright, for marks whose rules forbid angling them
+      return { id: String(p.id), name: String(p.name || p.id), svg: p.svg, src, w: 120, h: 120, noTilt: p.tilt === false,
         href: p.svg ? 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(p.svg))) : src };
     });
     PATCHES.forEach((p) => {
@@ -101,7 +102,7 @@
   if (remote && (/^https:\/\//i.test(remote) || (devHost && /^http:\/\/(localhost|127\.0\.0\.1)[:/]/i.test(remote)))) {
     fetch(remote).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then((j) => {
-        const defs = (Array.isArray(j) ? j : j.patches || []).map((p) => ({ id: p.id, name: p.name, src: p.src })); // remote lists may only point to files
+        const defs = (Array.isArray(j) ? j : j.patches || []).map((p) => ({ id: p.id, name: p.name, src: p.src, tilt: p.tilt })); // remote lists may only point to files
         addPatches(defs, remote); render(); renderTab();
       })
       .catch(() => { addPatches(window.PEEP_PATCHES || [], location.href); status('Couldn’t load this site’s patches, so the standard ones are shown.'); renderTab(); });
@@ -285,12 +286,12 @@
       const p = patchById(pt.pid); if (!p) return '';
       const w = pt.size * s, h = w * (p.h / p.w);
       const x = nx + pt.dx * s, y = ny + pt.dy * s;
-      const r = HANDLE_R, gap = r * 0.6;
+      const r = HANDLE_R, gap = r * 0.6, rot = p.noTilt ? 0 : pt.rot || 0;
       const sel = withSel && i === selectedPatch ? `<rect class="sel-box" x="${-w / 2 - gap}" y="${-h / 2 - gap}" width="${w + gap * 2}" height="${h + gap * 2}"/>` +
-        `<line class="sel-line" x1="0" y1="${-h / 2 - gap}" x2="0" y2="${-h / 2 - gap - r * 2.2}"/>` +
-        `<circle class="handle" data-handle="rotate" cx="0" cy="${-h / 2 - gap - r * 2.2}" r="${r}"><title>Drag to tilt</title></circle>` +
+        (p.noTilt ? '' : `<line class="sel-line" x1="0" y1="${-h / 2 - gap}" x2="0" y2="${-h / 2 - gap - r * 2.2}"/>` +
+        `<circle class="handle" data-handle="rotate" cx="0" cy="${-h / 2 - gap - r * 2.2}" r="${r}"><title>Drag to tilt</title></circle>`) +
         `<circle class="handle" data-handle="resize" cx="${w / 2 + gap}" cy="${h / 2 + gap}" r="${r}"><title>Drag to resize</title></circle>` : '';
-      return `<g class="patch" data-i="${i}" transform="translate(${x} ${y}) rotate(${pt.rot || 0})"><image href="${p.href}" x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}"/>${sel}</g>`;
+      return `<g class="patch" data-i="${i}" transform="translate(${x} ${y}) rotate(${rot})"><image href="${p.href}" x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}"/>${sel}</g>`;
     }).join('');
   }
   // what each outfit's colors are called, and which color its black garment takes
@@ -481,7 +482,7 @@
       body.innerHTML = `<p class="hint">Drag the patch to move it. Drag the round handles to resize or tilt it.</p>
         <div class="row" role="group" aria-label="Place on chest"><span class="mini">Place on chest</span>${SPOTS.map(([id, name]) => `<button class="btn small" data-spot="${id}">${name}</button>`).join('')}</div>
         <div class="row"><label for="p-size">Size</label><input id="p-size" type="range" min="20" max="500" value="${Math.round(pt.size)}" data-pprop="size"></div>
-        <div class="row"><label for="p-rot">Tilt</label><input id="p-rot" type="range" min="-180" max="180" value="${Math.round(pt.rot || 0)}" data-pprop="rot"></div>
+        ${p && p.noTilt ? '<p class="hint">This logo stays upright: its brand rules don\u2019t allow angling it.</p>' : `<div class="row"><label for="p-rot">Tilt</label><input id="p-rot" type="range" min="-180" max="180" value="${Math.round(pt.rot || 0)}" data-pprop="rot"></div>`}
         <div class="row"><button class="btn small" data-pact="back">Send back</button><button class="btn small" data-pact="front">Bring forward</button><button class="btn small" data-pact="dup">Duplicate</button><button class="btn small" data-pact="del">Remove</button><button class="btn small primary" data-pact="done">Done</button></div>`;
       return;
     }

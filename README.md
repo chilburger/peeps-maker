@@ -67,9 +67,10 @@ A patch list is a small JSON file next to your images:
 ```
 
 - `src` can be a full address or a path relative to the list.
+- Add `"tilt": false` to keep a logo upright. Many brand guidelines forbid angling the logo; with this set, the tool hides the tilt controls for that patch.
 - Use SVG, PNG, WebP, GIF or JPEG. SVG or a PNG with a transparent background looks best on clothes. In SVG files, convert text to outlines so it looks the same everywhere.
 - The list and images must be served over `https` from a host that allows cross-site requests (an `Access-Control-Allow-Origin` header). GitHub Pages does this by default, so a free repository is the simplest place to host them. If the list can't be loaded, the tool shows the standard patches and says so.
-- [`examples/patches.json`](examples/patches.json) is a working example.
+- [`examples/patches.json`](examples/patches.json) is a working example, and [`campuses/fredonia/patches.json`](campuses/fredonia/patches.json) is a real one.
 - Use only logos and marks your institution allows. Check with your marketing or communications office.
 
 ### Forking instead
