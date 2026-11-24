@@ -180,8 +180,9 @@
   // highlights, ombre...), both seen through the same mask of the hair.
   const HAIR_PATTERNS = [['', 'None'], ['frame', 'Face-framing'], ['streak', 'Streak'], ['two', 'Two streaks'], ['highlights', 'Highlights'], ['ombre', 'Ombré'], ['tips', 'Tips'], ['split', 'Split']];
   const PATTERN_HAS_POS = ['streak', 'two', 'highlights', 'split'];
-  // where the position slider starts for each pattern (0.5 is the part)
-  const PATTERN_POS = { streak: 0.72, two: 0.6, highlights: 0.5, split: 0.5 };
+  // where the slider starts for each pattern: for split, 0.5 is the part; for streaks and
+  // highlights, how far back from the face the locks sit
+  const PATTERN_POS = { streak: 0.2, two: 0.15, highlights: 0.2, split: 0.5 };
   const HAIR_GEOM = L.hairGeometry || {};
   // the two extra hair-color slots: [state key, color key, label]
   const HAIR_SLOTS = [['hairMix', 'hair2', 'Second color'], ['hairMix3', 'hair3', 'Third color']];
@@ -203,32 +204,51 @@
     const gw = g.x1 - g.x0, lo = g.x0 + gw * 0.08, hi = g.x1 - gw * 0.08;
     // patterns stop just under the hair, so thick ink at the chin or neck isn't colored
     const bottom = g.y1 + 8;
-    // position slider: 0.5 is the part, lower values toward the back of the head, higher toward the face
+    // split position: 0.5 is the part, lower values toward the back of the head, higher toward the face
     const across = (p) => (p <= 0.5 ? lo + (g.part - lo) * Math.max(0, p) / 0.5 : g.part + (hi - g.part) * (Math.min(1, p) - 0.5) / 0.5);
+    // the visible skin, for patterns that follow the face
+    const skinMask = part.svg.replace(/(fill|stroke)="([^"]*)"/g, (mm, a, v) => (a === 'fill' ? (v === '{{skinColor}}' ? 'fill="#fff"' : v === 'none' ? mm : 'fill="#000"') : `${a}="none"`));
+    // copies shifted downward carry a face-shaped band on down long hair below the jaw
+    const dropStep = Math.round(vh * 0.07);
+    const dropCopies = (src, res) => [1, 2, 3, 4].map((k) => `<feOffset in="${src}" dy="${dropStep * k}" result="${src}d${k}"/>`).join('') +
+      `<feMerge result="${res}"><feMergeNode in="${src}"/>${[1, 2, 3, 4].map((k) => `<feMergeNode in="${src}d${k}"/>`).join('')}</feMerge>`;
     for (const [key, colorKey] of HAIR_SLOTS) {
       const mix = st[key] || {}, col = c[colorKey];
       if (!mix.style || !col) continue;
       const pos = mix.pos == null ? (PATTERN_POS[mix.style] || 0.5) : mix.pos;
-      // a lock of hair crossing the hairline at x = at: it starts narrow near the part (k: how far
-      // from it, 0-1) and sweeps outward to the ends, as hair falls over a round head. A smooth
-      // curve, sampled into a tapered shape.
-      const strand = (at, bw, k = 0.05) => {
-        const s = at - g.part, A = [g.part + s * k, g.y0 - 15], M = [at + s * 0.1, g.face], E = [at + s * 1.1, g.y1 + 25];
-        const C = [2 * M[0] - (A[0] + E[0]) / 2, 2 * M[1] - (A[1] + E[1]) / 2]; // passes through M halfway
-        const Lp = [], Rp = [];
-        for (let i = 0; i <= 24; i++) {
-          const t = i / 24, u = 1 - t;
-          const x = u * u * A[0] + 2 * u * t * C[0] + t * t * E[0], y = u * u * A[1] + 2 * u * t * C[1] + t * t * E[1];
-          const dx = 2 * u * (C[0] - A[0]) + 2 * t * (E[0] - C[0]), dy = 2 * u * (C[1] - A[1]) + 2 * t * (E[1] - C[1]), len = Math.hypot(dx, dy) || 1;
-          const half = (bw / 2) * (t < 0.35 ? 0.2 + 0.8 * Math.sin((t / 0.35) * Math.PI / 2) : 1 - 0.15 * (t - 0.35) / 0.65);
-          Lp.push(`${n(x - (dy / len) * half)},${n(y + (dx / len) * half)}`); Rp.unshift(`${n(x + (dy / len) * half)},${n(y - (dx / len) * half)}`);
-        }
-        return `<path d="M${Lp.join(' L')} L${Rp.join(' L')} Z" fill="${col}" ${m}/>`;
+      // Locks of hair that follow the face, as Face-framing does: grow the visible skin outward to
+      // two distances and keep the band between them. The outer growth is nudged along (dx, dy), so
+      // the band is a crescent, thin where it starts and wider where it falls. The face is first
+      // stretched down with shifted copies, so the locks carry on down long hair. Seen through the hair mask, a lock follows each style's shape.
+      // Each lock: [distance from the face, width, nudge x, nudge y], as fractions of the hair's depth
+      // above the forehead; side keeps one side of the part.
+      const locks = (list, side, tag) => {
+        const T = Math.max(60, g.face - g.y0), lid = `pl-${key}-${name}-${tag}`;
+        const grow = (r, res) => `<feGaussianBlur in="sD" stdDeviation="${(Math.max(4, r) / 2.2).toFixed(1)}" result="${res}b"/><feComponentTransfer in="${res}b" result="${res}"><feFuncA type="discrete" tableValues="0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1"/></feComponentTransfer>`;
+        let f = `<filter id="${lid}-f" filterUnits="userSpaceOnUse" x="${X}" y="${Y}" width="${W}" height="${H}"><feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="s"/>${dropCopies('s', 'sD')}`;
+        const bands = list.map(([r, w, dx, dy], i) => {
+          const R = r * T, Wd = w * T, sx = side === 'left' ? -1 : 1; // taper away from the part
+          f += grow(R, `i${i}`) + grow(R + Wd, `o${i}`) + `<feOffset in="o${i}" dx="${n(sx * dx * Wd)}" dy="${n(dy * Wd)}" result="p${i}"/>` +
+            `<feComposite in="p${i}" in2="i${i}" operator="out" result="b${i}"/>`;
+          return `<feMergeNode in="b${i}"/>`;
+        }).join('');
+        f += `<feMerge result="all">${bands}</feMerge><feFlood flood-color="#fff"/><feComposite in2="all" operator="in"/><feGaussianBlur stdDeviation="2"/></filter>`;
+        defs += f + `<mask id="${lid}" maskUnits="userSpaceOnUse" x="${X}" y="${Y}" width="${W}" height="${H}"><g filter="url(#${lid}-f)">${skinMask}</g></mask>`;
+        // the side cut runs from the part, slanting back a little as it goes down
+        const top = g.part, bot = g.part - gw * 0.12;
+        const shape = side === 'both' ? `<rect x="${X}" y="${Y}" width="${W}" height="${H}"`
+          : side === 'left' ? `<polygon points="${X},${Y} ${n(top)},${Y} ${n(bot)},${Y + H} ${X},${Y + H}"`
+          : `<polygon points="${n(top)},${Y} ${X + W},${Y} ${X + W},${Y + H} ${n(bot)},${Y + H}"`;
+        return `<g ${m}>${shape} fill="${col}" mask="url(#${lid})"/></g>`;
       };
-      if (mix.style === 'streak') out += strand(across(pos), gw * 0.12);
-      if (mix.style === 'two') out += strand(across(pos), gw * 0.09, 0.4) + strand(across(Math.min(0.95, pos + 0.24)), gw * 0.09, 0.4);
-      // thin locks fanning out from either side of the position, of slightly different widths
-      if (mix.style === 'highlights') [[-0.34, 0.03], [-0.2, 0.04], [-0.07, 0.03], [0.1, 0.04], [0.24, 0.03], [0.38, 0.035]].forEach(([d, w]) => { out += strand(across(pos + d), gw * w); });
+      const side = mix.side || 'left', d = Math.round(pos * 100);
+      // both sides: a mirrored lock on each side of the part
+      const sided = (list, tag) => (side === 'both' ? locks(list, 'left', tag + 'l') + locks(list, 'right', tag + 'r') : locks(list, side, tag + side));
+      // position: how far back from the face the lock sits
+      if (mix.style === 'streak') out += sided([[0.2 + pos * 0.8, 0.3, 0.45, 0.5]], `s${d}`);
+      if (mix.style === 'two') out += sided([[0.18 + pos * 0.7, 0.24, 0.45, 0.5], [0.62 + pos * 0.7, 0.16, 0.45, 0.5]], `t${d}`);
+      // thin locks at several depths, all around the face, tapering in turn one way and the other
+      if (mix.style === 'highlights') out += locks([[0.08 + pos * 0.3, 0.12, 0.6, 0.6], [0.35 + pos * 0.3, 0.1, -0.6, 0.6], [0.62 + pos * 0.3, 0.12, 0.5, 0.7], [0.9 + pos * 0.3, 0.1, -0.5, 0.7]], 'both', `h${d}`);
       if (mix.style === 'split') out += `<rect x="${X}" y="${Y}" width="${n(across(pos) - X)}" height="${n(bottom - Y)}" fill="${col}" ${m}/>`;
       if (mix.style === 'ombre') {
         // fades in from a third of the way down the hair to fully colored near its ends
@@ -640,11 +660,9 @@
             HAIR_PATTERNS.map(([id, nm]) => `<button class="chip" data-hairmix="${id}" data-slot="${key}" aria-pressed="${(mix.style || '') === id}">${nm}</button>`).join('') + '</div></div>';
           if (!mix.style) return;
           h += swatchRow(colorKey, lab);
-          if (PATTERN_HAS_POS.includes(mix.style)) h += `<div class="row"><label for="pos-${key}">Position</label><input id="pos-${key}" type="range" min="5" max="95" value="${Math.round((mix.pos == null ? PATTERN_POS[mix.style] : mix.pos) * 100)}" data-hairpos="${key}"></div>`;
-          if (mix.style === 'frame') {
-            h += `<div class="row" role="group" aria-label="Side"><label>Side</label><div class="chips">${[['left', 'Left'], ['right', 'Right'], ['both', 'Both']].map(([v, t]) => `<button class="chip" data-hairside="${v}" data-slot="${key}" aria-pressed="${(mix.side || 'left') === v}">${t}</button>`).join('')}</div></div>` +
-              `<div class="row"><label for="w-${key}">Width</label><input id="w-${key}" type="range" min="0" max="100" value="${Math.round((mix.width == null ? 0.5 : mix.width) * 100)}" data-hairwidth="${key}"></div>`;
-          }
+          if (PATTERN_HAS_POS.includes(mix.style)) h += `<div class="row"><label for="pos-${key}">${mix.style === 'split' ? 'Position' : 'Distance from face'}</label><input id="pos-${key}" type="range" min="5" max="95" value="${Math.round((mix.pos == null ? PATTERN_POS[mix.style] : mix.pos) * 100)}" data-hairpos="${key}"></div>`;
+          if (['frame', 'streak', 'two'].includes(mix.style)) h += `<div class="row" role="group" aria-label="Side"><label>Side</label><div class="chips">${[['left', 'Left'], ['right', 'Right'], ['both', 'Both']].map(([v, t]) => `<button class="chip" data-hairside="${v}" data-slot="${key}" aria-pressed="${(mix.side || 'left') === v}">${t}</button>`).join('')}</div></div>`;
+          if (mix.style === 'frame') h += `<div class="row"><label for="w-${key}">Width</label><input id="w-${key}" type="range" min="0" max="100" value="${Math.round((mix.width == null ? 0.5 : mix.width) * 100)}" data-hairwidth="${key}"></div>`;
         });
       } else h += '<p class="hint">This style is a hat or head covering, so it has no hair color.</p>';
       if (used.has('hat')) h += swatchRow('hat');
