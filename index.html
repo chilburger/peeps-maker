@@ -42,7 +42,16 @@ h2.mini,.mini{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform
 .linkbtn{align-self:flex-start;background:none;border:0;padding:2px 0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px}
 .linkbtn:hover{color:var(--warn)}
 .status:empty{display:none}
-.clothes .row{margin:4px 0}
+.clothes .row{margin:4px 0;border-radius:8px;padding:2px 4px;margin-left:-4px}
+.clothes .row.focus{background:var(--accent-soft);outline:2px solid var(--accent)}
+.clothes .row .mini{margin:0 4px 0 0}
+.stage svg [data-layer]{cursor:pointer}
+.stage .handle{fill:#fff;stroke:var(--accent);stroke-width:3;vector-effect:non-scaling-stroke;cursor:grab}
+.stage .handle[data-handle="resize"]{cursor:nwse-resize}
+.stage .sel-line{stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke}
+.tabbody.flash{animation:flash .6s ease-out}
+@keyframes flash{from{background:var(--accent-soft)}to{background:transparent}}
+@media (prefers-reduced-motion:reduce){.tabbody.flash{animation:none}}
 .clothes .row label{min-width:58px}
 .clothes .sw{width:24px;height:24px}
 .btn.small{padding:5px 10px;font-size:13px}
@@ -104,9 +113,9 @@ h2:first-child{margin-top:0}
     <div class="stage" id="stage"></div>
     <div class="status" id="status" role="status" aria-live="polite"></div>
     <button class="btn surprise" id="random">Surprise me ✦</button>
-    <section class="group" aria-labelledby="clothes-h">
-      <h2 class="mini" id="clothes-h">Clothing colors</h2>
-      <div class="clothes" id="clothes"></div>
+    <section class="group" id="context" aria-labelledby="context-h">
+      <h2 class="mini" id="context-h">Clothing colors</h2>
+      <div class="clothes" id="context-body"></div>
     </section>
     <section class="group" aria-labelledby="dl-h">
       <h2 class="mini" id="dl-h">Download</h2>
@@ -150,6 +159,7 @@ https://github.com/chilburger/peeps-maker</pre>
 </div>
 <div class="wall" id="wall"><div class="wall-inner" id="wall-inner"></div></div>
 <script src="parts/parts.js"></script>
+<script src="parts/extra-bodies.js"></script>
 <script src="config/layers.js"></script>
 <script src="patches/patches.js"></script>
 <script src="app.js"></script>

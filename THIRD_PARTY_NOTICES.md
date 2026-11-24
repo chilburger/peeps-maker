@@ -1,6 +1,6 @@
 # Third-party notices
 
-`parts/parts.js` is converted from these packages. The artwork in both is Open Peeps by Pablo Stanley, released under CC0 1.0. Their code and part positions are used under the MIT License.
+`parts/parts.js` is converted from these packages, and `parts/extra-bodies.js` from the Open Peeps "Flat Assets" download (<https://www.openpeeps.com/>). The artwork in both is Open Peeps by Pablo Stanley, released under CC0 1.0. Their code and part positions are used under the MIT License.
 
 ## @opeepsfun/open-peeps
 

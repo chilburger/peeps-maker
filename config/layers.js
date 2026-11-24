@@ -384,6 +384,24 @@ window.PEEP_LAYERS = {
     "y": -639.0,
     "s": 1,
     "r": 0
+   },
+   "TeeTwo": {
+    "x": -147,
+    "y": -639,
+    "s": 1,
+    "r": 0
+   },
+   "Device": {
+    "x": -147,
+    "y": -639,
+    "s": 1,
+    "r": 0
+   },
+   "Sweater": {
+    "x": -147,
+    "y": -639,
+    "s": 1,
+    "r": 0
    }
   },
   "standing": {
@@ -672,5 +690,489 @@ window.PEEP_LAYERS = {
   "SmileWithMask",
   "CalmWithMask",
   "CheersWithMask"
- ]
+ ],
+ "garments": {
+  "bust": {
+   "BlazerBlackTee": {
+    "labels": {
+     "jacket": "Blazer"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Tee"
+    }
+   },
+   "ButtonPocketShirt": {
+    "labels": {
+     "top": "Shirt"
+    }
+   },
+   "ButtonShirt": {
+    "labels": {
+     "top": "Shirt"
+    }
+   },
+   "Coffee": {
+    "labels": {
+     "top": "Shirt",
+     "accent": "Mug"
+    }
+   },
+   "Computer": {
+    "labels": {
+     "top": "Shirt",
+     "accent": "Laptop"
+    }
+   },
+   "Dress": {
+    "labels": {
+     "top": "Trim"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Dress"
+    }
+   },
+   "Explaining": {
+    "labels": {
+     "top": "Tee"
+    }
+   },
+   "Gaming": {
+    "labels": {
+     "top": "Hoodie"
+    }
+   },
+   "GymShirt": {
+    "ink": {
+     "key": "top",
+     "label": "Tank top"
+    }
+   },
+   "Hoodie": {
+    "labels": {
+     "top": "Hoodie"
+    }
+   },
+   "Jacket": {
+    "labels": {
+     "top": "Shirt",
+     "jacket": "Collar"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Jacket"
+    }
+   },
+   "Killer": {
+    "labels": {
+     "accent": "Knife"
+    }
+   },
+   "Paper": {
+    "labels": {
+     "top": "Pattern",
+     "accent": "Phone"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Sweater"
+    }
+   },
+   "PointingUp": {
+    "labels": {
+     "top": "Pattern"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Sweater"
+    }
+   },
+   "PolkadotJacket": {
+    "labels": {
+     "jacket": "Jacket"
+    },
+    "ink": {
+     "key": "top",
+     "label": "Top"
+    }
+   },
+   "PoloSweater": {
+    "labels": {
+     "top": "Collar"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Sweater"
+    }
+   },
+   "ShirtCoat": {
+    "labels": {
+     "top": "Coat",
+     "jacket": "Shirt"
+    }
+   },
+   "SportyTee": {
+    "labels": {
+     "top": "Trim"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Tee"
+    }
+   },
+   "StripedTee": {
+    "labels": {
+     "top": "Tee"
+    }
+   },
+   "StrippedPocketTee": {
+    "labels": {
+     "accent": "Pocket"
+    },
+    "ink": {
+     "key": "top",
+     "label": "Tee"
+    }
+   },
+   "SweaterDots": {
+    "labels": {
+     "top": "Dots"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Sweater"
+    }
+   },
+   "Tee": {
+    "labels": {
+     "top": "Tee"
+    }
+   },
+   "TeeArmsCrossed": {
+    "ink": {
+     "key": "top",
+     "label": "Tee"
+    }
+   },
+   "TeeSelena": {
+    "labels": {
+     "top": "Logo"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Tee"
+    }
+   },
+   "ThunderTee": {
+    "labels": {
+     "top": "Bolt"
+    },
+    "ink": {
+     "key": "second",
+     "label": "Tee"
+    }
+   },
+   "Turtleneck": {
+    "ink": {
+     "key": "top",
+     "label": "Turtleneck"
+    }
+   },
+   "Whatever": {
+    "ink": {
+     "key": "top",
+     "label": "Tee"
+    }
+   },
+   "TeeTwo": {
+    "labels": {
+     "top": "Tee"
+    }
+   },
+   "Device": {
+    "labels": {
+     "top": "Shirt"
+    }
+   },
+   "Sweater": {
+    "labels": {
+     "top": "Sweater"
+    }
+   }
+  },
+  "standing": {
+   "BlazerColorPants": {
+    "labels": {
+     "jacket": "Blazer"
+    },
+    "ink": {
+     "key": "top",
+     "label": "Top",
+     "maxY": 0.5
+    }
+   },
+   "BlazerColorTee": {
+    "labels": {
+     "jacket": "Blazer"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Pants",
+     "maxY": 0.88,
+     "minY": 0.294
+    }
+   },
+   "CrossArmColorPants": {
+    "ink": {
+     "key": "top",
+     "label": "Top",
+     "maxY": 0.5
+    }
+   },
+   "CrossArmColorTee": {
+    "ink": {
+     "key": "pants",
+     "label": "Pants",
+     "maxY": 0.88,
+     "minY": 0.356
+    }
+   },
+   "Dancer": {},
+   "Doc": {
+    "labels": {
+     "top": "Scrubs",
+     "jacket": "Coat"
+    }
+   },
+   "DocHazardous": {
+    "labels": {
+     "top": "Suit"
+    }
+   },
+   "DocStethoscope": {
+    "labels": {
+     "top": "Scrubs",
+     "jacket": "Coat"
+    }
+   },
+   "EasingColorPants": {
+    "labels": {
+     "jacket": "Overshirt"
+    },
+    "ink": {
+     "key": "top",
+     "label": "Top",
+     "maxY": 0.5
+    }
+   },
+   "EasingColorTee": {
+    "labels": {
+     "jacket": "Overshirt"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Pants",
+     "maxY": 0.88,
+     "minY": 0.32
+    }
+   },
+   "PointingFingerColorPants": {
+    "ink": {
+     "key": "top",
+     "label": "Top",
+     "maxY": 0.5
+    }
+   },
+   "PointingFingerColorTee": {
+    "ink": {
+     "key": "pants",
+     "label": "Outfit",
+     "maxY": 0.88
+    }
+   },
+   "Polkadots": {
+    "ink": {
+     "key": "second",
+     "label": "Dots",
+     "maxY": 0.5
+    }
+   },
+   "ProthesisColorPants": {
+    "labels": {
+     "jacket": "Blazer",
+     "accent": "Prosthesis"
+    },
+    "ink": {
+     "key": "top",
+     "label": "Top",
+     "maxY": 0.5
+    }
+   },
+   "ProthesisColorTee": {
+    "labels": {
+     "jacket": "Blazer",
+     "accent": "Prosthesis"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Pants",
+     "maxY": 0.72,
+     "minY": 0.294
+    }
+   },
+   "RestingColorPants": {
+    "ink": {
+     "key": "pants",
+     "label": "Pants",
+     "maxY": 0.88,
+     "minY": 0.385
+    }
+   },
+   "RestingColorTee": {
+    "ink": {
+     "key": "top",
+     "label": "Top",
+     "maxY": 0.5
+    }
+   },
+   "ShirtColorPants": {
+    "ink": {
+     "key": "top",
+     "label": "Shirt",
+     "maxY": 0.5
+    }
+   },
+   "ShirtColorTee": {
+    "labels": {
+     "top": "Shirt"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Pants",
+     "maxY": 0.88,
+     "minY": 0.38
+    }
+   },
+   "ShirtProthesisColorPants": {
+    "labels": {
+     "pants": "Shorts",
+     "accent": "Prosthesis"
+    },
+    "ink": {
+     "key": "top",
+     "label": "Shirt",
+     "maxY": 0.5
+    }
+   },
+   "ShirtProthesisColorTee": {
+    "labels": {
+     "top": "Shirt",
+     "accent": "Prosthesis"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Shorts",
+     "maxY": 0.68,
+     "minY": 0.38
+    }
+   },
+   "WalkingColorPants": {
+    "ink": {
+     "key": "top",
+     "label": "Tee",
+     "maxY": 0.5
+    }
+   },
+   "WalkingColorTee": {
+    "labels": {
+     "top": "Tee"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Pants",
+     "maxY": 0.88,
+     "minY": 0.39
+    }
+   }
+  },
+  "sitting": {
+   "Bike": {
+    "labels": {
+     "accent": "Bike"
+    }
+   },
+   "ClosedLegsColorPants": {
+    "ink": {
+     "key": "second",
+     "label": "Jacket"
+    }
+   },
+   "ClosedLegsColorTee": {
+    "labels": {
+     "jacket": "Jacket"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Pants"
+    }
+   },
+   "CrossedLegs": {
+    "ink": {
+     "key": "pants",
+     "label": "Pants"
+    }
+   },
+   "HandsBackColorPants": {
+    "ink": {
+     "key": "top",
+     "label": "Tee"
+    }
+   },
+   "HandsBackColorTee": {
+    "labels": {
+     "top": "Tee"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Pants"
+    }
+   },
+   "MidColorPants": {
+    "ink": {
+     "key": "top",
+     "label": "Tee"
+    }
+   },
+   "MidColorTee": {
+    "labels": {
+     "top": "Tee"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Pants"
+    }
+   },
+   "OneLegColorPants": {
+    "ink": {
+     "key": "top",
+     "label": "Tee"
+    }
+   },
+   "OneLegColorTee": {
+    "labels": {
+     "top": "Tee"
+    },
+    "ink": {
+     "key": "pants",
+     "label": "Pants"
+    }
+   },
+   "Wheelchair": {
+    "labels": {
+     "accent": "Wheelchair"
+    }
+   }
+  }
+ }
 };

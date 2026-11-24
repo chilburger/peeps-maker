@@ -51,15 +51,15 @@
     frameColor: 'accent', cupColor: 'accent', paperColor: 'accent', computerColor: 'accent', knifeColor: 'accent',
     pocketColor: 'accent', wheelchairColor: 'accent', bikeFrameColor: 'accent', bikeIronColor: 'accent', prothesisColor: 'accent',
   };
-  const COLOR_LABEL = { skin: 'Skin', hair: 'Hair color', top: 'Top', pants: 'Pants', jacket: 'Jacket', shoes: 'Shoes', hat: 'Headwear', accent: 'Props', bg: 'Background', backdrop: 'Shape color' };
-  const PALETTE = { skin: SKIN, hair: HAIRC, top: CLOTH, pants: CLOTH, jacket: CLOTH, shoes: CLOTH, hat: CLOTH, accent: CLOTH, bg: BG, backdrop: BACKDROP_C };
+  const COLOR_LABEL = { skin: 'Skin', hair: 'Hair color', top: 'Top', pants: 'Pants', jacket: 'Jacket', shoes: 'Shoes', hat: 'Headwear', accent: 'Props', bg: 'Background', backdrop: 'Shape color', second: 'Second color' };
+  const PALETTE = { skin: SKIN, hair: HAIRC, top: CLOTH, pants: CLOTH, jacket: CLOTH, shoes: CLOTH, hat: CLOTH, accent: CLOTH, second: CLOTH, bg: BG, backdrop: BACKDROP_C };
 
   // ---------- state ----------
   const DEFAULT = {
     view: 'bust',
     body: { bust: 'Hoodie', standing: 'ShirtColorTee', sitting: 'MidColorTee' },
     hair: 'ShortOne', face: 'Smile', beard: null, accessory: null, mask: null, backdrop: 'circle',
-    colors: { skin: '#E8B080', hair: '#1A1A1A', top: '#7FA7D9', pants: '#3A3A3A', jacket: '#5B7FB4', shoes: '#F5F5F5', hat: '#7FA7D9', accent: '#F2C94C', bg: '#DCEFE4', backdrop: '#F7C948' },
+    colors: { skin: '#E8B080', hair: '#1A1A1A', top: '#7FA7D9', pants: '#3A3A3A', jacket: '#5B7FB4', shoes: '#F5F5F5', hat: '#7FA7D9', accent: '#F2C94C', bg: '#DCEFE4', backdrop: '#F7C948', second: '#1A1A1A' },
     patches: [],
   };
   let S = clone(DEFAULT);
@@ -117,8 +117,11 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const label = (n) => (P.mask[n] ? P.mask[n].name : n.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Za-z])(\d)/g, '$1 $2'));
 
+  let TAGGING = false; // while drawing the main picture, label each colored area for click-to-edit
   function paint(svg, colors) {
-    return svg.replace(/\{\{(\w+)\}\}/g, (m, t) => (t === 'outlineColor' ? '#000' : colors[TOKEN[t]] || '#9AA5B1'));
+    const color = (t) => (t === 'outlineColor' ? '#000' : colors[TOKEN[t]] || '#9AA5B1');
+    if (TAGGING) svg = svg.replace(/(fill|stroke)="\{\{(\w+)\}\}"/g, (m, a, t) => `${a}="${color(t)}" data-c="${t === 'outlineColor' ? 'ink' : TOKEN[t] || 'accent'}"`);
+    return svg.replace(/\{\{(\w+)\}\}/g, (m, t) => color(t));
   }
   function offT(cat, name) {
     const o = L.offsets[cat][name] || {};
@@ -147,7 +150,21 @@
   const TINT_SKIP = L.tintSkip || ['HatHip', 'Hijab', 'Turban', 'DocOne', 'DocTwo', 'DocThree'];
   const tintable = (cat, name) => (cat === 'hair' || cat === 'beard') && P[cat][name] &&
     !P[cat][name].colors.some((t) => t === 'hairColor' || t === 'beardColor') && !TINT_SKIP.includes(name);
-  const TINT_DEFS = '<defs><filter id="peeps-tint" x="-5%" y="-5%" width="110%" height="110%"><feMorphology operator="erode" radius="11"/><feMorphology operator="dilate" radius="5"/></filter></defs>';
+  const TINT_FILTER = '<filter id="peeps-tint" x="-5%" y="-5%" width="110%" height="110%"><feMorphology operator="erode" radius="11"/><feMorphology operator="dilate" radius="5"/></filter>';
+  // Mask of where the finished drawing is black: ink in white, every other fill in black, drawn
+  // in order, so a face or mouth drawn over the ink stays clear. The filter shrinks it inward.
+  function inkMask(svg) {
+    return svg.replace(/(fill|stroke)="([^"]*)"/g, (m, a, v) => (a === 'fill' ? (v === '{{outlineColor}}' ? 'fill="#fff"' : v === 'none' ? m : 'fill="#000"') : `${a}="none"`));
+  }
+  // a color layer over the thick black areas of one part; minY/maxY (0-1) limit it to a band,
+  // eg pants only, so shoes and shirt shading keep their ink
+  function tintLayer(id, part, color, maxY, minY, key) {
+    const [vx, vy, vw, vh] = (part.viewBox || `0 0 ${part.w} ${part.h}`).split(' ').map(Number);
+    const x = vx - 60, w = vw + 120;
+    const y = minY ? vy + vh * minY : vy - 60, h = (maxY ? vy + vh * maxY : vy + vh + 60) - y;
+    return `<defs>${TINT_FILTER}<mask id="pm-${id}" maskUnits="userSpaceOnUse" x="${x}" y="${vy - 60}" width="${w}" height="${vh + 120}"><g filter="url(#peeps-tint)">${inkMask(part.svg)}</g></mask></defs>` +
+      `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" mask="url(#pm-${id})" pointer-events="none"/>`;
+  }
   // dark lenses and the size of their glare gap (grow-then-shrink radius)
   const GLARE = L.glare || { Sunglasses: 7, SunglassesTwo: 16 };
   const GLARE_COLOR = '#DCE9F2';
@@ -164,7 +181,7 @@
     const g = (cat, name) => {
       if (!name || !P[cat][name]) return '';
       const svg = P[cat][name].svg;
-      const tint = tintable(cat, name) && !isInk(c.hair) ?`${TINT_DEFS}<g filter="url(#peeps-tint)">${tintCopy(svg, c.hair)}</g>` : '';
+      const tint = tintable(cat, name) && !isInk(c.hair) ? tintLayer(`${cat}-${name}`, P[cat][name], c.hair, 0, 0, 'hair') : '';
       // dark lenses: their glare is a gap in the ink, so lay a light glare color underneath
       const glare = cat === 'accessory' && GLARE[name] ? `${glareDefs(GLARE[name])}<g filter="url(#peeps-close-${GLARE[name]})">${tintCopy(svg, GLARE_COLOR)}</g>` : '';
       return `<g data-layer="${cat}" transform="translate(${A[cat][0]} ${A[cat][1]})"><g transform="${offT(cat, name)}">${glare}${paint(svg, c)}${tint}</g></g>`;
@@ -178,19 +195,28 @@
       const p = patchById(pt.pid); if (!p) return '';
       const w = pt.size * s, h = w * (p.h / p.w);
       const x = nx + pt.dx * s, y = ny + pt.dy * s;
-      const sel = withSel && i === selectedPatch ? `<rect class="sel-box" x="${-w / 2 - 6}" y="${-h / 2 - 6}" width="${w + 12}" height="${h + 12}"/>` : '';
+      const r = HANDLE_R, gap = r * 0.6;
+      const sel = withSel && i === selectedPatch ? `<rect class="sel-box" x="${-w / 2 - gap}" y="${-h / 2 - gap}" width="${w + gap * 2}" height="${h + gap * 2}"/>` +
+        `<line class="sel-line" x1="0" y1="${-h / 2 - gap}" x2="0" y2="${-h / 2 - gap - r * 2.2}"/>` +
+        `<circle class="handle" data-handle="rotate" cx="0" cy="${-h / 2 - gap - r * 2.2}" r="${r}"><title>Drag to tilt</title></circle>` +
+        `<circle class="handle" data-handle="resize" cx="${w / 2 + gap}" cy="${h / 2 + gap}" r="${r}"><title>Drag to resize</title></circle>` : '';
       return `<g class="patch" data-i="${i}" transform="translate(${x} ${y}) rotate(${pt.rot || 0})"><image href="${p.href}" x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}"/>${sel}</g>`;
     }).join('');
   }
+  // what each outfit's colors are called, and which color its black garment takes
+  const garment = (view, body) => ((L.garments || {})[view] || {})[body] || {};
   function figureSVG(st, withSel) {
     const view = st.view, body = st.body[view], part = P[view][body];
     const { str } = headT(view, body);
-    return `<g data-layer="body">${paint(part.svg, st.colors)}</g><g data-layer="patches">${patchesSVG(st, withSel)}</g><g data-layer="head" transform="${str}">${headSVG(st)}</g>`;
+    const g = garment(view, body), inkColor = g.ink ? st.colors[g.ink.key] : null;
+    const tint = inkColor && !isInk(inkColor) ? tintLayer(`${view}-${body}`, part, inkColor, g.ink.maxY, g.ink.minY, g.ink.key) : '';
+    return `<g data-layer="body">${paint(part.svg, st.colors)}${tint}</g><g data-layer="patches">${patchesSVG(st, withSel)}</g><g data-layer="head" transform="${str}">${headSVG(st)}</g>`;
   }
 
   // measure bounds with a hidden svg
   const meas = document.createElementNS(NS, 'svg');
-  meas.setAttribute('style', 'position:absolute;left:-9999px;top:0;width:10px;height:10px;visibility:hidden');
+  meas.setAttribute('style', 'position:absolute;left:-9999px;top:0;width:10px;height:10px;opacity:0;pointer-events:none');
+  meas.setAttribute('aria-hidden', 'true');
   document.body.appendChild(meas);
   function boundsOf(inner) {
     meas.innerHTML = `<g>${inner}</g>`;
@@ -209,8 +235,10 @@
     const inner = figureSVG(st, false);
     const vb = frame(st, inner);
     const [x, y, w, h] = vb.split(' ').map(Number);
-    const bg = st.colors.bg !== 'transparent' ? `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${st.colors.bg}"/>` : '';
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${esc(describe(st))}">${bg}${backdropSVG(st.backdrop, st.colors.backdrop, x, y, w)}${withSel ? figureSVG(st, true) : inner}</svg>`;
+    const bg = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${st.colors.bg === 'transparent' ? 'none' : st.colors.bg}" pointer-events="all"/>`;
+    HANDLE_R = w * 0.018;
+    const back = `<g data-layer="backdrop">${bg}${backdropSVG(st.backdrop, st.colors.backdrop, x, y, w)}</g>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${esc(describe(st))}">${back}${withSel ? figureSVG(st, true) : inner}</svg>`;
   }
   // an optional colored shape behind the figure, sized from the square frame
   function backdropSVG(shape, color, x, y, side) {
@@ -274,8 +302,11 @@
 
   // ---------- stage ----------
   const stage = document.getElementById('stage');
+  let HANDLE_R = 20;
   function render() {
-    stage.innerHTML = fullSVG(S, true);
+    TAGGING = true;
+    try { stage.innerHTML = fullSVG(S, true); } finally { TAGGING = false; }
+    renderContext();
     updateFavicon();
     document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === S.view));
     if (ADMIN) renderAdmin();
@@ -288,19 +319,87 @@
     const svg = stage.querySelector('svg'); const pt = svg.createSVGPoint();
     pt.x = evt.clientX; pt.y = evt.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse());
   }
+  // where a patch's center sits in picture coordinates
+  function patchCenter(pt) { const [nx, ny, s] = neckPoint(S.view, curBody()); return [nx + pt.dx * s, ny + pt.dy * s, s]; }
   stage.addEventListener('pointerdown', (e) => {
+    const handle = e.target.closest('[data-handle]');
     const g = e.target.closest('.patch');
-    if (!g) { if (selectedPatch != null) { selectedPatch = null; render(); renderTab(); } return; }
-    const i = Number(g.dataset.i); selectedPatch = i;
-    const p = svgPoint(e); const pt = S.patches[i]; const s = neckPoint(S.view, curBody())[2];
-    drag = { i, sx: p.x, sy: p.y, dx: pt.dx, dy: pt.dy, s };
-    stage.setPointerCapture(e.pointerId); render(); renderTab(); e.preventDefault();
+    if (handle && selectedPatch != null) {
+      const pt = S.patches[selectedPatch], p = svgPoint(e), [cx, cy] = patchCenter(pt);
+      drag = { kind: handle.dataset.handle, i: selectedPatch, cx, cy, d0: Math.hypot(p.x - cx, p.y - cy) || 1, size0: pt.size };
+    } else if (g) {
+      const i = Number(g.dataset.i); selectedPatch = i;
+      const p = svgPoint(e), pt = S.patches[i], s = neckPoint(S.view, curBody())[2];
+      drag = { kind: 'move', i, sx: p.x, sy: p.y, dx: pt.dx, dy: pt.dy, s };
+      showTab('patches');
+    } else {
+      pickFromPicture(e.target);
+      return;
+    }
+    stage.setPointerCapture(e.pointerId); render(); e.preventDefault();
   });
   stage.addEventListener('pointermove', (e) => {
-    if (!drag) return; const p = svgPoint(e); const pt = S.patches[drag.i];
-    pt.dx = drag.dx + (p.x - drag.sx) / drag.s; pt.dy = drag.dy + (p.y - drag.sy) / drag.s; render();
+    if (!drag) return;
+    const p = svgPoint(e), pt = S.patches[drag.i];
+    if (drag.kind === 'move') { pt.dx = drag.dx + (p.x - drag.sx) / drag.s; pt.dy = drag.dy + (p.y - drag.sy) / drag.s; }
+    if (drag.kind === 'resize') pt.size = Math.max(20, Math.min(500, drag.size0 * Math.hypot(p.x - drag.cx, p.y - drag.cy) / drag.d0));
+    if (drag.kind === 'rotate') { let a = Math.atan2(p.y - drag.cy, p.x - drag.cx) * 180 / Math.PI + 90; if (a > 180) a -= 360; pt.rot = Math.round(a); }
+    render();
   });
-  stage.addEventListener('pointerup', () => { if (drag) { drag = null; save(); } });
+  stage.addEventListener('pointerup', () => { if (drag) { drag = null; save(); render(); } });
+
+  // ---------- click-to-edit ----------
+  // Clicking part of the picture opens the controls for it.
+  let focusColor = null; // the garment row to highlight under the picture
+  const LAYER_TAB = { hair: 'hair', face: 'face', beard: 'beard', mask: 'extras', accessory: 'extras', backdrop: 'backdrop' };
+  function pickFromPicture(el) {
+    const hadPatch = selectedPatch != null; selectedPatch = null; focusColor = null;
+    const c = el.closest('[data-c]'), c2 = c && c.dataset.c, layer = (el.closest('[data-layer]') || {}).dataset || {};
+    const where = layer.layer;
+    if (c2 === 'skin') showTab('skin');
+    else if (where === 'body') {
+      // a click on black ink inside the outfit means its black garment, when it has one
+      const g = garment(S.view, curBody()), key = c2 === 'ink' && g.ink ? g.ink.key : c2;
+      focusColor = key && key !== 'ink' && clothingRows().some(([k]) => k === key) ? key : null;
+      showTab('outfit');
+    } else if (c2 === 'hat') showTab('hair');
+    else if (LAYER_TAB[where]) showTab(LAYER_TAB[where]);
+    else if (hadPatch) render();
+    if (focusColor || where === 'body') {
+      render();
+      const row = document.querySelector(`#context-body [data-row="${focusColor}"]`) || document.getElementById('context');
+      row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+  function showTab(id) {
+    tab = id; tabsEl.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', x.dataset.tab === id));
+    renderTab();
+    const panel = document.getElementById('tabbody');
+    panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
+  }
+
+  // The area under the picture edits whatever is selected: a patch, or the outfit's colors.
+  // quick spots, as the viewer sees them
+  const SPOTS = [['left', 'Left', -110, 300], ['center', 'Center', 0, 330], ['right', 'Right', 110, 300]];
+  function renderContext() {
+    const head = document.getElementById('context-h'), body = document.getElementById('context-body');
+    if (!head) return;
+    const pt = selectedPatch != null ? S.patches[selectedPatch] : null;
+    if (pt) {
+      const p = patchById(pt.pid);
+      head.textContent = 'Selected patch: ' + (p ? p.name : '');
+      body.innerHTML = `<p class="hint">Drag the patch to move it. Drag the round handles to resize or tilt it.</p>
+        <div class="row" role="group" aria-label="Place on chest"><span class="mini">Place on chest</span>${SPOTS.map(([id, name]) => `<button class="btn small" data-spot="${id}">${name}</button>`).join('')}</div>
+        <div class="row"><label for="p-size">Size</label><input id="p-size" type="range" min="20" max="500" value="${Math.round(pt.size)}" data-pprop="size"></div>
+        <div class="row"><label for="p-rot">Tilt</label><input id="p-rot" type="range" min="-180" max="180" value="${Math.round(pt.rot || 0)}" data-pprop="rot"></div>
+        <div class="row"><button class="btn small" data-pact="back">Send back</button><button class="btn small" data-pact="front">Bring forward</button><button class="btn small" data-pact="dup">Duplicate</button><button class="btn small" data-pact="del">Remove</button><button class="btn small primary" data-pact="done">Done</button></div>`;
+      return;
+    }
+    head.textContent = 'Clothing colors';
+    body.innerHTML = clothingRows().map(([k, lab]) => swatchRow(k, lab).replace('<div class="row">', `<div class="row${focusColor === k ? ' focus' : ''}" data-row="${k}">`)).join('') +
+      '<p class="hint">Tip: click any part of your avatar to edit it.</p>';
+  }
+
 
   // ---------- tabs ----------
   const TABS = [
@@ -338,9 +437,10 @@
     return h + '</div>';
   }
   function swatchRow(key, label) {
+    const lab = label || COLOR_LABEL[key];
     const pal = PALETTE[key], cur = String(S.colors[key]).toLowerCase();
     const custom = key !== 'bg' && /^#[0-9a-f]{6}$/i.test(S.colors[key]) ? S.colors[key] : '#ffffff';
-    return `<div class="row"><label>${label || COLOR_LABEL[key]}</label><div class="swatches">${pal.map(([c, name]) => `<button class="sw" data-color="${key}" data-val="${c}" title="${name}" aria-label="${COLOR_LABEL[key]}: ${name}" aria-pressed="${cur === c.toLowerCase()}" style="background:${c === 'transparent' ? 'repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0/10px 10px' : c}"></button>`).join('')}${key !== 'bg' ? `<input type="color" data-color="${key}" value="${custom}" title="Pick any color" aria-label="Pick any ${COLOR_LABEL[key].toLowerCase()}">` : ''}</div></div>`;
+    return `<div class="row"><label>${esc(lab)}</label><div class="swatches">${pal.map(([c, name]) => `<button class="sw" data-color="${key}" data-val="${c}" title="${name}" aria-label="${esc(lab)}: ${name}" aria-pressed="${cur === c.toLowerCase()}" style="background:${c === 'transparent' ? 'repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0/10px 10px' : c}"></button>`).join('')}${key !== 'bg' ? `<input type="color" data-color="${key}" value="${custom}" title="Pick any color" aria-label="Pick any ${esc(lab.toLowerCase())} color">` : ''}</div></div>`;
   }
   // clothing colors the current outfit (and hat) actually use
   function usedColorKeys() {
@@ -351,19 +451,47 @@
   }
   const hairHasColor = (h) => tintable('hair', h) || (P.hair[h] && P.hair[h].colors.includes('hairColor'));
   // clothing colors live under the picture, always in view
-  function renderClothes() {
-    const used = usedColorKeys();
-    document.getElementById('clothes').innerHTML = ['top', 'jacket', 'pants', 'shoes', 'hat', 'accent'].filter((k) => used.has(k)).map((k) => swatchRow(k)).join('');
+  // the current outfit's garments, named for what they are (Blazer, Tee, Pants...)
+  function clothingRows() {
+    const used = usedColorKeys(), g = garment(S.view, curBody()), labels = g.labels || {};
+    const rows = [];
+    for (const k of ['jacket', 'top', 'second', 'pants', 'shoes', 'accent']) {
+      const isInkGarment = g.ink && g.ink.key === k;
+      if (used.has(k) || isInkGarment) rows.push([k, isInkGarment ? g.ink.label : labels[k] || COLOR_LABEL[k]]);
+    }
+    return rows;
   }
-  const clothesEl = document.getElementById('clothes');
-  clothesEl.addEventListener('click', (e) => {
+
+  const ctxEl = document.getElementById('context-body');
+  ctxEl.addEventListener('click', (e) => {
     const sw = e.target.closest('button[data-color]');
-    if (sw) { S.colors[sw.dataset.color] = sw.dataset.val; save(); render(); renderClothes(); }
+    if (sw) { S.colors[sw.dataset.color] = sw.dataset.val; focusColor = sw.dataset.color; save(); render(); return; }
+    patchAction(e);
   });
-  clothesEl.addEventListener('input', (e) => { if (e.target.matches('input[type=color]')) { S.colors[e.target.dataset.color] = e.target.value; save(); render(); } });
-  clothesEl.addEventListener('change', (e) => { if (e.target.matches('input[type=color]')) renderClothes(); });
+  ctxEl.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.matches('input[type=color]')) { S.colors[t.dataset.color] = t.value; save(); TAGGING = true; try { stage.innerHTML = fullSVG(S, true); } finally { TAGGING = false; } }
+    if (t.dataset.pprop && selectedPatch != null) { S.patches[selectedPatch][t.dataset.pprop] = Number(t.value); save(); TAGGING = true; try { stage.innerHTML = fullSVG(S, true); } finally { TAGGING = false; } }
+  });
+  ctxEl.addEventListener('change', () => render());
+  function patchAction(e) {
+    const spot = e.target.closest('[data-spot]');
+    if (spot && selectedPatch != null) {
+      const [, , dx, dy] = SPOTS.find((x) => x[0] === spot.dataset.spot);
+      Object.assign(S.patches[selectedPatch], { dx, dy, rot: 0 }); save(); render(); return true;
+    }
+    const pa = e.target.closest('[data-pact]');
+    if (!pa || selectedPatch == null) return false;
+    const i = selectedPatch, a = pa.dataset.pact, arr = S.patches;
+    if (a === 'del') { arr.splice(i, 1); selectedPatch = null; }
+    if (a === 'done') selectedPatch = null;
+    if (a === 'dup') { arr.push({ ...arr[i], dx: arr[i].dx + 20, dy: arr[i].dy + 20 }); selectedPatch = arr.length - 1; }
+    if (a === 'front' && i < arr.length - 1) { [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]]; selectedPatch = i + 1; }
+    if (a === 'back' && i > 0) { [arr[i], arr[i - 1]] = [arr[i - 1], arr[i]]; selectedPatch = i - 1; }
+    save(); render(); renderTab(); return true;
+  }
   function renderTab() {
-    renderClothes();
+    renderContext();
     let h = '';
     const used = usedColorKeys();
     if (tab === 'outfit') {
@@ -399,14 +527,7 @@
         S.patches.forEach((pt, i) => { const p = patchById(pt.pid); h += `<button class="btn" data-selpatch="${i}" aria-pressed="${i === selectedPatch}" style="${i === selectedPatch ? 'border-color:var(--accent);background:var(--accent-soft)' : ''}">${esc(p ? p.name : pt.pid)}</button>`; });
         h += '</div>';
       }
-      if (selectedPatch != null && S.patches[selectedPatch]) {
-        const pt = S.patches[selectedPatch];
-        h += `<h2>Selected patch</h2>
-        <div class="row"><label for="p-size">Size</label><input id="p-size" type="range" min="20" max="400" value="${Math.round(pt.size)}" data-pprop="size"></div>
-        <div class="row"><label for="p-rot">Tilt</label><input id="p-rot" type="range" min="-45" max="45" value="${Math.round(pt.rot || 0)}" data-pprop="rot"></div>
-        <div class="row"><button class="btn" data-pact="back">Send back</button><button class="btn" data-pact="front">Bring forward</button><button class="btn" data-pact="dup">Duplicate</button><button class="btn" data-pact="del">Remove</button></div>
-        <p class="hint">Arrow keys nudge the selected patch (hold Shift for bigger steps).</p>`;
-      }
+      if (S.patches.length) h += '<p class="hint">Click a patch to edit it: its controls appear under the picture. Arrow keys nudge it (hold Shift for bigger steps).</p>';
     }
     bodyEl.innerHTML = h;
   }
@@ -425,20 +546,11 @@
     }
     const sp = e.target.closest('[data-selpatch]');
     if (sp) { selectedPatch = Number(sp.dataset.selpatch); render(); renderTab(); return; }
-    const pa = e.target.closest('[data-pact]');
-    if (pa && selectedPatch != null) {
-      const i = selectedPatch, a = pa.dataset.pact, arr = S.patches;
-      if (a === 'del') { arr.splice(i, 1); selectedPatch = null; }
-      if (a === 'dup') { arr.push({ ...arr[i], dx: arr[i].dx + 20, dy: arr[i].dy + 20 }); selectedPatch = arr.length - 1; }
-      if (a === 'front' && i < arr.length - 1) { [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]]; selectedPatch = i + 1; }
-      if (a === 'back' && i > 0) { [arr[i], arr[i - 1]] = [arr[i - 1], arr[i]]; selectedPatch = i - 1; }
-      save(); render(); renderTab();
-    }
+    patchAction(e);
   });
   bodyEl.addEventListener('input', (e) => {
     const t = e.target;
     if (t.matches('input[type=color]')) { S.colors[t.dataset.color] = t.value; save(); render(); }
-    if (t.dataset.pprop && selectedPatch != null) { S.patches[selectedPatch][t.dataset.pprop] = Number(t.value); save(); render(); }
   });
   bodyEl.addEventListener('change', (e) => { if (e.target.matches('input[type=color]')) renderTab(); });
 
