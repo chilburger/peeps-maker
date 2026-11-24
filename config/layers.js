@@ -662,5 +662,15 @@ window.PEEP_LAYERS = {
    607.5,
    639.0
   ]
- }
+ },
+ "maskedHair": [
+  "DocOne",
+  "DocTwo",
+  "DocThree"
+ ],
+ "maskedFaces": [
+  "SmileWithMask",
+  "CalmWithMask",
+  "CheersWithMask"
+ ]
 };

@@ -119,10 +119,20 @@
   // neck point of the current body, in body coordinates
   function neckPoint(view, body) { const { h } = headT(view, body); return [h.x + h.s * NECK[0], h.y + h.s * NECK[1], h.s]; }
 
+  // Hair with a built-in mask or face shield (the Doc styles) is drawn under the face,
+  // so those styles get the eyes-only "With Mask" faces made for them.
+  const MASKED_FACES = L.maskedFaces || [];
+  const isMaskedHair = (h) => (L.maskedHair || []).includes(h) && MASKED_FACES.length > 0;
+  function faceOf(st) {
+    if (!isMaskedHair(st.hair)) return st.face;
+    if (MASKED_FACES.includes(st.face)) return st.face;
+    return MASKED_FACES.includes(st.maskedFace) ? st.maskedFace : MASKED_FACES[0];
+  }
+
   function headSVG(st) {
     const c = st.colors; let out = '';
     const g = (cat, name) => (name && P[cat][name] ? `<g data-layer="${cat}" transform="translate(${A[cat][0]} ${A[cat][1]})"><g transform="${offT(cat, name)}">${paint(P[cat][name].svg, c)}</g></g>` : '');
-    out += g('hair', st.hair); out += g('face', st.face); out += g('beard', st.beard); out += g('mask', st.mask); out += g('accessory', st.accessory);
+    out += g('hair', st.hair); out += g('face', faceOf(st)); out += g('beard', st.beard); out += g('mask', st.mask); out += g('accessory', st.accessory);
     return out;
   }
   function patchesSVG(st, withSel) {
@@ -166,7 +176,7 @@
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${esc(describe(st))}">${bg}${withSel ? figureSVG(st, true) : inner}</svg>`;
   }
   function describe(st) {
-    const bits = [label(st.body[st.view]) + ' outfit', label(st.hair) + ' hair', label(st.face) + ' face'];
+    const bits = [label(st.body[st.view]) + ' outfit', label(st.hair) + ' hair', label(faceOf(st)) + ' face'];
     if (st.beard) bits.push(label(st.beard) + ' facial hair');
     if (st.accessory) bits.push(label(st.accessory));
     if (st.mask) bits.push(label(st.mask));
@@ -203,7 +213,9 @@
     }
     const clash = conflictsFor(cat, name, S);
     for (const [oc] of clash) S[oc] = null;
-    if (cat === 'body') S.body[S.view] = name; else S[cat] = name;
+    if (cat === 'body') S.body[S.view] = name;
+    else if (cat === 'face' && isMaskedHair(S.hair) && MASKED_FACES.includes(name)) S.maskedFace = name; // keeps the usual face for later
+    else S[cat] = name;
     status(clash.length ? 'Removed ' + clash.map(([c, n]) => label(n)).join(', ') + ': it doesn’t fit with ' + label(name) + '.' : '');
     save(); render(); renderTab();
   }
@@ -260,8 +272,8 @@
   }
   const thumbBox = { hair: '230 60 720 720', face: '470 330 420 420', beard: '440 470 420 420', accessory: '400 360 460 460', mask: '380 430 480 480' };
 
-  function optionGrid(cat, current, allowNone) {
-    const names = cat === 'body' ? list(S.view) : list(cat);
+  function optionGrid(cat, current, allowNone, only) {
+    const names = only || (cat === 'body' ? list(S.view) : list(cat));
     let h = '<div class="grid">';
     if (allowNone) h += `<button class="opt none" data-cat="${cat}" data-name="" aria-pressed="${current == null}">None</button>`;
     for (const n of names) {
@@ -284,7 +296,11 @@
     let h = '';
     if (tab === 'outfit') h = optionGrid('body', curBody(), false);
     else if (tab === 'hair') h = optionGrid('hair', S.hair, false);
-    else if (tab === 'face') h = optionGrid('face', S.face, false);
+    else if (tab === 'face') {
+      h = isMaskedHair(S.hair)
+        ? '<p class="hint">This style comes with its own mask, so these faces are made to go with it.</p>' + optionGrid('face', faceOf(S), false, MASKED_FACES)
+        : optionGrid('face', S.face, false);
+    }
     else if (tab === 'beard') h = optionGrid('beard', S.beard, true);
     else if (tab === 'accessory') h = optionGrid('accessory', S.accessory, true);
     else if (tab === 'mask') h = optionGrid('mask', S.mask, true);
@@ -364,6 +380,7 @@
   document.getElementById('random').addEventListener('click', () => {
     const st = S;
     st.body[st.view] = pick(list(st.view)); st.hair = pick(list('hair')); st.face = pick(list('face'));
+    if (MASKED_FACES.length) st.maskedFace = pick(MASKED_FACES);
     st.beard = Math.random() < 0.3 ? pick(list('beard')) : null;
     st.accessory = Math.random() < 0.35 ? pick(list('accessory')) : null;
     st.mask = Math.random() < 0.1 ? pick(list('mask')) : null;
