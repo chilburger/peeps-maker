@@ -69,6 +69,7 @@ A patch list is a small JSON file next to your images:
 - `src` can be a full address or a path relative to the list.
 - Add `"tilt": false` to keep a logo upright. Many brand guidelines forbid angling the logo; with this set, the tool hides the tilt controls for that patch.
 - Add `"scale"` to start a patch bigger or smaller than a chest badge (eg `2.5` for lettering across the chest; 0.3–4), and `"center": true` to start it in the middle of the chest instead of on the left.
+- The outfit's lines (zipper, seams, folds) run over patches, as on real fabric. Add `"lines": false` to keep a patch clear of them, eg an official logo that must appear unaltered.
 - Use SVG, PNG, WebP, GIF or JPEG. SVG or a PNG with a transparent background looks best on clothes. In SVG files, convert text to outlines so it looks the same everywhere.
 - The list and images must be served over `https` from a host that allows cross-site requests (an `Access-Control-Allow-Origin` header). GitHub Pages does this by default, so a free repository is the simplest place to host them. If the list can't be loaded, the tool shows the standard patches and says so.
 - [`examples/patches.json`](examples/patches.json) is a working example, and [`campuses/fredonia/patches.json`](campuses/fredonia/patches.json) is a real one.
