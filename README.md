@@ -1,6 +1,6 @@
 # Peeps maker
 
-An Open Peeps avatar builder any library can embed in a LibGuide, a learning management system course or its own site. Visitors pick an outfit, hair, face, facial hair, glasses and a mask across three views (head and shoulders, standing, sitting), add patches to their clothes, and download the result as SVG or PNG. Everything runs in the browser: no accounts, no tracking, no build step.
+An Open Peeps avatar builder any library can embed in a LibGuide, a learning management system course or its own site. Visitors pick an outfit, skin tone, hair and hair color, face, facial hair, glasses, a mask and a backdrop across three views (head and shoulders, standing, sitting), add patches to their clothes, and download the result as SVG or PNG in three sizes. Their avatar saves in their browser, and "Copy my avatar link" gives them a link that brings it back on any computer. Everything runs in the browser: no accounts, no tracking, no build step.
 
 Live tool: <https://chilburger.github.io/peeps-maker/>
 
@@ -10,7 +10,7 @@ Paste this into a LibGuide **Media/Widget** asset (Add/Reorder → Media/Widget)
 
 ```html
 <iframe src="https://chilburger.github.io/peeps-maker/" title="Avatar maker"
-  loading="lazy" style="width:100%;max-width:960px;height:720px;border:1px solid #ccc;border-radius:8px"></iframe>
+  loading="lazy" allow="clipboard-write" style="width:100%;max-width:960px;height:760px;border:1px solid #ccc;border-radius:8px"></iframe>
 ```
 
 To hide the tool behind a button, paste this instead:
@@ -22,7 +22,7 @@ To hide the tool behind a button, paste this instead:
 </button>
 <div id="peeps-frame-wrap" hidden style="margin-top:12px">
   <iframe src="https://chilburger.github.io/peeps-maker/" title="Avatar maker"
-    loading="lazy" style="width:100%;max-width:960px;height:720px;border:1px solid #ccc;border-radius:8px"></iframe>
+    loading="lazy" allow="clipboard-write" style="width:100%;max-width:960px;height:760px;border:1px solid #ccc;border-radius:8px"></iframe>
 </div>
 <script>
   (function () {
@@ -113,5 +113,6 @@ The script reads the package files as text and never runs their code.
 
 - Illustrations: [Open Peeps](https://www.openpeeps.com/) by Pablo Stanley, CC0 1.0 (public domain).
 - Part data adapted from [@opeepsfun/open-peeps](https://www.npmjs.com/package/@opeepsfun/open-peeps) (bodies, hair, faces, facial hair, glasses and their offsets) and [@dicebear/open-peeps](https://www.npmjs.com/package/@dicebear/open-peeps) (masks), both MIT for code and CC0 for art.
-- Tool: Christina Hilburger, CC BY 4.0.
-- Avatars people make are theirs to use however they like, with no credit required. Logos and marks a library adds as patches belong to their owners.
+- Tool: © 2026 Christina Hilburger, [CC BY 4.0](LICENSE.md). Third-party notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- Avatars people make are theirs to use however they like, with no credit required.
+- Logos and marks a library adds as patches belong to their owners and are not covered by CC BY 4.0. SUNY Fredonia's are in [`campuses/fredonia/`](campuses/fredonia/NOTICE.md).

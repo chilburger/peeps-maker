@@ -31,10 +31,18 @@
   const NECK = A.neck;
 
   // ---------- colors ----------
-  const SKIN = ['#FFE4CF', '#F5CFA0', '#E0A97A', '#D08B5B', '#AE5D29', '#8C4F2B', '#694D3D', '#4A3123'];
-  const HAIRC = ['#1B1B1B', '#4A3123', '#8C4F2B', '#C9862C', '#E8C86E', '#B7B7B7', '#F2F2F2', '#C93C3C', '#7A4CC2', '#2F7DD1'];
-  const CLOTH = ['#1F4E9C', '#6F9BE0', '#FFFFFF', '#F2C230', '#1B1B1B', '#9AA5B1', '#C93C3C', '#2E8B57', '#F28C38', '#BA98DE', '#F5B7C5', '#8C4F2B'];
-  const BG = ['transparent', '#FFFFFF', '#E3EBF8', '#1F4E9C', '#F2C230', '#DCEFE4', '#F8E3DC', '#EDE4F7'];
+  // palettes: [color, name]
+  const SKIN = [['#FFE0BD', 'Light'], ['#F6C9A0', 'Fair'], ['#E8B080', 'Medium'], ['#C68642', 'Tan'], ['#A56B43', 'Brown'], ['#7A4E2D', 'Deep'], ['#5C3A21', 'Dark'], ['#3F2A1B', 'Ebony']];
+  const HAIRC = [['#1A1A1A', 'Black'], ['#3B2219', 'Dark brown'], ['#5A3825', 'Brown'], ['#8B5A2B', 'Chestnut'], ['#B87333', 'Auburn'], ['#D9A441', 'Blonde'],
+    ['#9AA0A6', 'Grey'], ['#E6E6E6', 'White'], ['#E67EA6', 'Pink'], ['#6C8EE0', 'Blue'], ['#57B894', 'Green'], ['#8E6FD1', 'Purple']];
+  const CLOTH = [['#7FA7D9', 'Blue'], ['#5B7FB4', 'Navy'], ['#1F4E9C', 'Royal'], ['#57B894', 'Green'], ['#E4915B', 'Orange'], ['#E06C7A', 'Red'], ['#E67EA6', 'Pink'],
+    ['#8E6FD1', 'Purple'], ['#F2C94C', 'Yellow'], ['#6B7280', 'Slate'], ['#3A3A3A', 'Charcoal'], ['#222222', 'Black'], ['#F5F5F5', 'White'], ['#C68642', 'Tan']];
+  const BG = [['#F2E9D8', 'Cream'], ['#FBE3D6', 'Blush'], ['#DCEFE4', 'Mint'], ['#D7ECF0', 'Sky'], ['#E9E1F4', 'Lilac'], ['#FBEFC7', 'Butter'], ['#FFFFFF', 'White'], ['transparent', 'Transparent']];
+  const BACKDROP_C = [['#F7C948', 'Sun'], ['#F58A7A', 'Coral'], ['#8ECAE6', 'Sky'], ['#A3D9A5', 'Sage'], ['#C3A6E0', 'Lilac'], ['#F4A9C7', 'Rose'],
+    ['#FBD38D', 'Peach'], ['#7FB2E5', 'Blue'], ['#E7A977', 'Clay'], ['#B8B8D1', 'Slate'], ['#5C6B73', 'Steel'], ['#2E2E38', 'Ink']];
+  const SHAPES = [['', 'None'], ['circle', 'Circle'], ['squircle', 'Rounded square'], ['arch', 'Arch'], ['blob', 'Blob']];
+  const PNG_SIZES = [[512, 'Small'], [1024, 'Medium'], [2048, 'Large']];
+  let pngMax = 1024;
   // which visitor color each part token uses
   const TOKEN = {
     skinColor: 'skin', hairColor: 'hair', beardColor: 'hair', topColor: 'top', pantsColor: 'pants',
@@ -43,21 +51,22 @@
     frameColor: 'accent', cupColor: 'accent', paperColor: 'accent', computerColor: 'accent', knifeColor: 'accent',
     pocketColor: 'accent', wheelchairColor: 'accent', bikeFrameColor: 'accent', bikeIronColor: 'accent', prothesisColor: 'accent',
   };
-  const COLOR_LABEL = { skin: 'Skin', hair: 'Hair', top: 'Top', pants: 'Pants', jacket: 'Jacket', shoes: 'Shoes', hat: 'Headwear', accent: 'Props', bg: 'Background' };
+  const COLOR_LABEL = { skin: 'Skin', hair: 'Hair color', top: 'Top', pants: 'Pants', jacket: 'Jacket', shoes: 'Shoes', hat: 'Headwear', accent: 'Props', bg: 'Background', backdrop: 'Shape color' };
+  const PALETTE = { skin: SKIN, hair: HAIRC, top: CLOTH, pants: CLOTH, jacket: CLOTH, shoes: CLOTH, hat: CLOTH, accent: CLOTH, bg: BG, backdrop: BACKDROP_C };
 
   // ---------- state ----------
   const DEFAULT = {
     view: 'bust',
     body: { bust: 'Hoodie', standing: 'ShirtColorTee', sitting: 'MidColorTee' },
-    hair: 'ShortOne', face: 'Smile', beard: null, accessory: null, mask: null,
-    colors: { skin: '#E0A97A', hair: '#1B1B1B', top: '#1F4E9C', pants: '#1B1B1B', jacket: '#6F9BE0', shoes: '#FFFFFF', hat: '#1F4E9C', accent: '#F2C230', bg: '#E3EBF8' },
+    hair: 'ShortOne', face: 'Smile', beard: null, accessory: null, mask: null, backdrop: 'circle',
+    colors: { skin: '#E8B080', hair: '#1A1A1A', top: '#7FA7D9', pants: '#3A3A3A', jacket: '#5B7FB4', shoes: '#F5F5F5', hat: '#7FA7D9', accent: '#F2C94C', bg: '#DCEFE4', backdrop: '#F7C948' },
     patches: [],
   };
   let S = clone(DEFAULT);
   if (BG_PARAM) DEFAULT.colors.bg = BG_PARAM;
   if (ACCENT) DEFAULT.colors.top = ACCENT;
   S = clone(DEFAULT);
-  try { const s = JSON.parse(localStorage.getItem(STATE_KEY)); if (s && s.body) S = Object.assign(clone(DEFAULT), s); } catch (e) {}
+  try { const s = JSON.parse(localStorage.getItem(STATE_KEY)); if (s && s.body) { S = Object.assign(clone(DEFAULT), s); S.colors = Object.assign(clone(DEFAULT.colors), s.colors || {}); } } catch (e) {}
   const save = () => { try { localStorage.setItem(STATE_KEY, JSON.stringify(S)); } catch (e) {} };
   let selectedPatch = null;
 
@@ -129,9 +138,34 @@
     return MASKED_FACES.includes(st.maskedFace) ? st.maskedFace : MASKED_FACES[0];
   }
 
+  // Hair color. Most hair and beards are drawn as one black ink shape, so color is added
+  // with a copy of that shape shrunk inward: thick areas take the color, while the edges and
+  // thin strands stay as ink lines. Parts with their own hair color, and hats, are left alone.
+  const TINT_SKIP = L.tintSkip || ['HatHip', 'Hijab', 'Turban', 'DocOne', 'DocTwo', 'DocThree'];
+  const tintable = (cat, name) => (cat === 'hair' || cat === 'beard') && P[cat][name] &&
+    !P[cat][name].colors.some((t) => t === 'hairColor' || t === 'beardColor') && !TINT_SKIP.includes(name);
+  const TINT_DEFS = '<defs><filter id="peeps-tint" x="-5%" y="-5%" width="110%" height="110%"><feMorphology operator="erode" radius="11"/><feMorphology operator="dilate" radius="5"/></filter></defs>';
+  // dark lenses and the size of their glare gap (grow-then-shrink radius)
+  const GLARE = L.glare || { Sunglasses: 7, SunglassesTwo: 16 };
+  const GLARE_COLOR = '#DCE9F2';
+  // closing (grow, then shrink) fills the small glare gaps without growing the frame
+  const glareDefs = (r) => `<defs><filter id="peeps-close-${r}" x="-5%" y="-5%" width="110%" height="110%"><feMorphology operator="dilate" radius="${r}"/><feMorphology operator="erode" radius="${r}"/></filter></defs>`;
+  // near-black hair needs no tint layer: the ink already shows
+  const isInk = (hex) => { const n = parseInt(String(hex).slice(1), 16); return ((n >> 16) + ((n >> 8) & 255) + (n & 255)) < 90; };
+  function tintCopy(svg, color) {
+    return svg.replace(/(fill|stroke)="([^"]*)"/g, (m, a, v) => (a === 'fill' && v === '{{outlineColor}}' ? `fill="${color}"` : `${a}="none"`));
+  }
+
   function headSVG(st) {
     const c = st.colors; let out = '';
-    const g = (cat, name) => (name && P[cat][name] ? `<g data-layer="${cat}" transform="translate(${A[cat][0]} ${A[cat][1]})"><g transform="${offT(cat, name)}">${paint(P[cat][name].svg, c)}</g></g>` : '');
+    const g = (cat, name) => {
+      if (!name || !P[cat][name]) return '';
+      const svg = P[cat][name].svg;
+      const tint = tintable(cat, name) && !isInk(c.hair) ?`${TINT_DEFS}<g filter="url(#peeps-tint)">${tintCopy(svg, c.hair)}</g>` : '';
+      // dark lenses: their glare is a gap in the ink, so lay a light glare color underneath
+      const glare = cat === 'accessory' && GLARE[name] ? `${glareDefs(GLARE[name])}<g filter="url(#peeps-close-${GLARE[name]})">${tintCopy(svg, GLARE_COLOR)}</g>` : '';
+      return `<g data-layer="${cat}" transform="translate(${A[cat][0]} ${A[cat][1]})"><g transform="${offT(cat, name)}">${glare}${paint(svg, c)}${tint}</g></g>`;
+    };
     out += g('hair', st.hair); out += g('face', faceOf(st)); out += g('beard', st.beard); out += g('mask', st.mask); out += g('accessory', st.accessory);
     return out;
   }
@@ -173,7 +207,22 @@
     const vb = frame(st, inner);
     const [x, y, w, h] = vb.split(' ').map(Number);
     const bg = st.colors.bg !== 'transparent' ? `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${st.colors.bg}"/>` : '';
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${esc(describe(st))}">${bg}${withSel ? figureSVG(st, true) : inner}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${esc(describe(st))}">${bg}${backdropSVG(st.backdrop, st.colors.backdrop, x, y, w)}${withSel ? figureSVG(st, true) : inner}</svg>`;
+  }
+  // an optional colored shape behind the figure, sized from the square frame
+  function backdropSVG(shape, color, x, y, side) {
+    if (!shape || !color) return '';
+    const cx = x + side / 2, cy = y + side / 2, f = `fill="${color}"`, n = (v) => v.toFixed(1);
+    if (shape === 'circle') return `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(side * 0.43)}" ${f}/>`;
+    if (shape === 'squircle') { const s = side * 0.84, r = side * 0.2; return `<rect x="${n(cx - s / 2)}" y="${n(cy - s / 2)}" width="${n(s)}" height="${n(s)}" rx="${n(r)}" ${f}/>`; }
+    if (shape === 'arch') {
+      const hw = side * 0.36, top = cy - side * 0.06, bot = y + side + 1;
+      return `<path ${f} d="M${n(cx - hw)},${n(bot)} L${n(cx - hw)},${n(top)} A${n(hw)},${n(hw)} 0 0 1 ${n(cx + hw)},${n(top)} L${n(cx + hw)},${n(bot)} Z"/>`;
+    }
+    if (shape === 'blob') {
+      return `<path transform="translate(${n(cx)} ${n(cy)}) scale(${n(side * 0.43)})" ${f} d="M0.9,-0.42 C1.12,0.08 0.72,0.72 0.12,0.92 C-0.5,1.12 -1.02,0.6 -1.0,0.02 C-0.98,-0.6 -0.6,-1.12 0.0,-1.02 C0.42,-0.95 0.72,-0.82 0.9,-0.42 Z"/>`;
+    }
+    return '';
   }
   function describe(st) {
     const bits = [label(st.body[st.view]) + ' outfit', label(st.hair) + ' hair', label(faceOf(st)) + ' face'];
@@ -251,8 +300,8 @@
 
   // ---------- tabs ----------
   const TABS = [
-    ['outfit', 'Outfit'], ['hair', 'Hair'], ['face', 'Face'], ['beard', 'Facial hair'],
-    ['accessory', 'Glasses'], ['mask', 'Mask'], ['colors', 'Colors'], ['patches', 'Patches'],
+    ['outfit', 'Outfit'], ['skin', 'Skin'], ['hair', 'Hair'], ['face', 'Face'], ['beard', 'Facial hair'],
+    ['accessory', 'Glasses'], ['mask', 'Mask'], ['backdrop', 'Backdrop'], ['patches', 'Patches'],
   ];
   let tab = 'outfit';
   const tabsEl = document.getElementById('tabs'), bodyEl = document.getElementById('tabbody');
@@ -283,35 +332,62 @@
     }
     return h + '</div>';
   }
-  function swatchRow(key, palette) {
-    return `<div class="row"><label>${COLOR_LABEL[key]}</label><div class="swatches">${palette.map((c) => `<button class="sw" data-color="${key}" data-val="${c}" aria-label="${COLOR_LABEL[key]} ${c}" aria-pressed="${S.colors[key] === c}" style="background:${c === 'transparent' ? 'repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0/10px 10px' : c}"></button>`).join('')}${key !== 'bg' ? `<input type="color" data-color="${key}" value="${S.colors[key]}" aria-label="Custom ${COLOR_LABEL[key]} color">` : ''}</div></div>`;
+  function swatchRow(key, label) {
+    const pal = PALETTE[key], cur = String(S.colors[key]).toLowerCase();
+    const custom = key !== 'bg' && /^#[0-9a-f]{6}$/i.test(S.colors[key]) ? S.colors[key] : '#ffffff';
+    return `<div class="row"><label>${label || COLOR_LABEL[key]}</label><div class="swatches">${pal.map(([c, name]) => `<button class="sw" data-color="${key}" data-val="${c}" title="${name}" aria-label="${COLOR_LABEL[key]}: ${name}" aria-pressed="${cur === c.toLowerCase()}" style="background:${c === 'transparent' ? 'repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0/10px 10px' : c}"></button>`).join('')}${key !== 'bg' ? `<input type="color" data-color="${key}" value="${custom}" title="Pick any color" aria-label="Pick any ${COLOR_LABEL[key].toLowerCase()}">` : ''}</div></div>`;
   }
+  // clothing colors the current outfit (and hat) actually use
   function usedColorKeys() {
-    const keys = new Set(['skin']);
+    const keys = new Set();
     const add = (part) => part && part.colors && part.colors.forEach((t) => TOKEN[t] && keys.add(TOKEN[t]));
-    add(P[S.view][curBody()]); add(P.hair[S.hair]); if (S.beard) add(P.beard[S.beard]);
+    add(P[S.view][curBody()]); add(P.hair[S.hair]);
     return keys;
   }
+  const hairHasColor = (h) => tintable('hair', h) || (P.hair[h] && P.hair[h].colors.includes('hairColor'));
+  // clothing colors live under the picture, always in view
+  function renderClothes() {
+    const used = usedColorKeys();
+    document.getElementById('clothes').innerHTML = ['top', 'jacket', 'pants', 'shoes', 'hat', 'accent'].filter((k) => used.has(k)).map((k) => swatchRow(k)).join('');
+  }
+  const clothesEl = document.getElementById('clothes');
+  clothesEl.addEventListener('click', (e) => {
+    const sw = e.target.closest('button[data-color]');
+    if (sw) { S.colors[sw.dataset.color] = sw.dataset.val; save(); render(); renderClothes(); }
+  });
+  clothesEl.addEventListener('input', (e) => { if (e.target.matches('input[type=color]')) { S.colors[e.target.dataset.color] = e.target.value; save(); render(); } });
+  clothesEl.addEventListener('change', (e) => { if (e.target.matches('input[type=color]')) renderClothes(); });
   function renderTab() {
+    renderClothes();
     let h = '';
-    if (tab === 'outfit') h = optionGrid('body', curBody(), false);
-    else if (tab === 'hair') h = optionGrid('hair', S.hair, false);
+    const used = usedColorKeys();
+    if (tab === 'outfit') {
+      h += '<p class="hint">Change clothing colors under the picture.</p>' + optionGrid('body', curBody(), false);
+    } else if (tab === 'skin') {
+      h = swatchRow('skin') + '<p class="hint">Use the color picker at the end of the row for any other shade.</p>';
+    } else if (tab === 'hair') {
+      if (hairHasColor(S.hair)) h += swatchRow('hair');
+      else h += '<p class="hint">This style is a hat or head covering, so it has no hair color.</p>';
+      if (used.has('hat')) h += swatchRow('hat');
+      h += optionGrid('hair', S.hair, false);
+    }
     else if (tab === 'face') {
       h = isMaskedHair(S.hair)
         ? '<p class="hint">This style comes with its own mask, so these faces are made to go with it.</p>' + optionGrid('face', faceOf(S), false, MASKED_FACES)
         : optionGrid('face', S.face, false);
     }
-    else if (tab === 'beard') h = optionGrid('beard', S.beard, true);
+    else if (tab === 'beard') h = swatchRow('hair', 'Color') + '<p class="hint">Facial hair shares the hair color.</p>' + optionGrid('beard', S.beard, true);
     else if (tab === 'accessory') h = optionGrid('accessory', S.accessory, true);
     else if (tab === 'mask') h = optionGrid('mask', S.mask, true);
-    else if (tab === 'colors') {
-      const used = usedColorKeys();
-      h += swatchRow('skin', SKIN);
-      if (used.has('hair')) h += swatchRow('hair', HAIRC); else h += '<p class="hint">This hairstyle is drawn in ink and has no color option.</p>';
-      for (const k of ['top', 'jacket', 'pants', 'shoes', 'hat', 'accent']) if (used.has(k)) h += swatchRow(k, CLOTH);
-      h += swatchRow('bg', BG);
+    else if (tab === 'backdrop') {
+      h += '<h2>Shape</h2><div class="grid">';
+      for (const [id, name] of SHAPES) {
+        const icon = id ? `<svg viewBox="0 0 100 100" aria-hidden="true">${backdropSVG(id, S.colors.backdrop, 0, 0, 100)}</svg>` : 'None';
+        h += `<button class="opt${id ? '' : ' none'}" data-shape="${id}" aria-pressed="${(S.backdrop || '') === id}" title="${name}" aria-label="${name}">${icon}</button>`;
+      }
+      h += '</div>' + swatchRow('backdrop') + swatchRow('bg') + '<p class="hint">Transparent gives a see-through PNG.</p>';
     } else if (tab === 'patches') {
-      h += '<h2>Add a patch</h2><p class="hint">Pick one, then drag it on the avatar to place it.</p><div class="grid">';
+      h += '<h2>Add a patch</h2><p class="hint">Pick one, then drag it on the avatar to place it.</p><div class="grid patchgrid">';
       for (const p of PATCHES) h += `<button class="opt" data-addpatch="${p.id}" title="${esc(p.name)}" aria-label="Add ${esc(p.name)}"><img src="${p.href}" alt="" style="max-width:80%;max-height:80%"></button>`;
       h += '</div>';
       if (S.patches.length) {
@@ -335,6 +411,8 @@
     if (o) { setPart(o.dataset.cat, o.dataset.name || null); return; }
     const sw = e.target.closest('button[data-color]');
     if (sw) { S.colors[sw.dataset.color] = sw.dataset.val; save(); render(); renderTab(); return; }
+    const sh = e.target.closest('[data-shape]');
+    if (sh) { S.backdrop = sh.dataset.shape || null; save(); render(); renderTab(); return; }
     const ap = e.target.closest('[data-addpatch]');
     if (ap) {
       const spot = (L.patchSpot[S.view] || {})[curBody()] || { dx: 110, dy: 340, size: 110 };
@@ -384,8 +462,10 @@
     st.beard = Math.random() < 0.3 ? pick(list('beard')) : null;
     st.accessory = Math.random() < 0.35 ? pick(list('accessory')) : null;
     st.mask = Math.random() < 0.1 ? pick(list('mask')) : null;
-    st.colors.skin = pick(SKIN); st.colors.hair = pick(HAIRC);
-    for (const k of ['top', 'pants', 'jacket', 'shoes', 'hat', 'accent']) st.colors[k] = pick(CLOTH);
+    st.colors.skin = pick(SKIN)[0]; st.colors.hair = pick(HAIRC)[0];
+    for (const k of ['top', 'pants', 'jacket', 'shoes', 'hat', 'accent']) st.colors[k] = pick(CLOTH)[0];
+    st.backdrop = Math.random() < 0.5 ? pick(SHAPES.slice(1))[0] : null;
+    st.colors.backdrop = pick(BACKDROP_C)[0];
     // resolve clashes, last pick wins
     // drop any optional part that clashes with anything else
     for (const c of ['mask', 'beard', 'accessory']) if (st[c] && conflictsFor(c, st[c], st).length) st[c] = null;
@@ -403,12 +483,12 @@
     const svg = fullSVG(S, false), img = new Image();
     if (S.patches.some((pt) => (patchById(pt.pid) || {}).noInline)) status('Some patches come from a site that blocks downloads, so they may be missing from the PNG.');
     img.onload = () => {
-      const c = document.createElement('canvas'); c.width = c.height = 1024;
-      c.getContext('2d').drawImage(img, 0, 0, 1024, 1024);
+      const c = document.createElement('canvas'); c.width = c.height = pngMax;
+      c.getContext('2d').drawImage(img, 0, 0, pngMax, pngMax);
       try { download('my-avatar.png', c.toDataURL('image/png')); } catch (err) { status('PNG download failed. Try SVG instead.'); }
     };
     img.onerror = () => status('PNG download failed. Try SVG instead.');
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace('<svg ', '<svg width="1024" height="1024" '));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace('<svg ', `<svg width="${pngMax}" height="${pngMax}" `));
   });
 
   // =====================================================================
@@ -568,6 +648,40 @@
     if (w) { adSel(w.dataset.wall); }
     if (w || e.target.id === 'wall-close' || e.target.id === 'wall') document.getElementById('wall').classList.remove('open');
   });
+
+  // ---------- PNG size, saving and the about panel ----------
+  const sizesEl = document.getElementById('sizes');
+  const drawSizes = () => { sizesEl.innerHTML = PNG_SIZES.map(([px, name]) => `<button data-px="${px}" aria-pressed="${px === pngMax}" title="${px}\u00d7${px} pixels">${name}</button>`).join(''); };
+  sizesEl.addEventListener('click', (e) => { const b = e.target.closest('[data-px]'); if (b) { pngMax = Number(b.dataset.px); drawSizes(); } });
+  drawSizes();
+  // an avatar link carries the settings after # so it works on any computer
+  const toB64 = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const fromB64 = (b) => decodeURIComponent(escape(atob(b.replace(/-/g, '+').replace(/_/g, '/'))));
+  document.getElementById('copy-link').addEventListener('click', () => {
+    const base = location.href.split('#')[0];
+    const link = base + '#avatar=' + toB64(JSON.stringify(S));
+    copyText(link, 'Link copied. Open it any time to get this avatar back.');
+  });
+  document.getElementById('start-over').addEventListener('click', () => {
+    if (!confirm('Start over with a new avatar? Your current one will be replaced.')) return;
+    S = clone(DEFAULT); selectedPatch = null; save(); render(); renderTab(); status('Started over.');
+  });
+  function copyText(text, msg) {
+    const done = () => status(msg);
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, () => fallback());
+    else fallback();
+    function fallback() { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { prompt('Copy this:', text); } t.remove(); }
+  }
+  document.querySelector('.about').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-copy]'); if (b) copyText(document.getElementById(b.dataset.copy).textContent, 'Copied.');
+  });
+  const m = /#avatar=([\w-]+)/.exec(location.hash);
+  if (m) {
+    try {
+      const s = JSON.parse(fromB64(m[1]));
+      if (s && s.body && s.colors) { S = Object.assign(clone(DEFAULT), s); S.colors = Object.assign(clone(DEFAULT.colors), s.colors); save(); status('Avatar loaded from your link.'); }
+    } catch (e) { status('That avatar link could not be read.'); }
+  }
 
   render(); renderTab();
   if (ADMIN) status('Layer checker is on. Visitors never see it.');
