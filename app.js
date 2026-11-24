@@ -67,7 +67,10 @@
   if (ACCENT) DEFAULT.colors.top = ACCENT;
   S = clone(DEFAULT);
   try { const s = JSON.parse(localStorage.getItem(STATE_KEY)); if (s && s.body) { S = Object.assign(clone(DEFAULT), s); S.colors = Object.assign(clone(DEFAULT.colors), s.colors || {}); } } catch (e) {}
-  const save = () => { try { localStorage.setItem(STATE_KEY, JSON.stringify(S)); } catch (e) {} };
+  // each avatar has an id and a last-changed time, so an old shortcut never undoes newer changes
+  const newId = () => Math.random().toString(36).slice(2, 10);
+  if (!S.id) S.id = newId();
+  const save = () => { S.t = Date.now(); try { localStorage.setItem(STATE_KEY, JSON.stringify(S)); } catch (e) {} };
   let selectedPatch = null;
 
   // ---------- patches library ----------
@@ -273,6 +276,7 @@
   const stage = document.getElementById('stage');
   function render() {
     stage.innerHTML = fullSVG(S, true);
+    updateFavicon();
     document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === S.view));
     if (ADMIN) renderAdmin();
   }
@@ -657,14 +661,60 @@
   // an avatar link carries the settings after # so it works on any computer
   const toB64 = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const fromB64 = (b) => decodeURIComponent(escape(atob(b.replace(/-/g, '+').replace(/_/g, '/'))));
+  const avatarLink = () => location.href.split('#')[0] + '#avatar=' + toB64(JSON.stringify(S));
   document.getElementById('copy-link').addEventListener('click', () => {
-    const base = location.href.split('#')[0];
-    const link = base + '#avatar=' + toB64(JSON.stringify(S));
-    copyText(link, 'Link copied. Open it any time to get this avatar back.');
+    copyText(avatarLink(), 'Link copied. Open it any time to get this avatar back.');
   });
+  // a desktop shortcut file that opens the tool with this avatar
+  const UA = navigator.userAgent;
+  const isPhone = /iPhone|iPad|iPod|Android/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
+  const isMac = /Macintosh|Mac OS X/.test(UA) && !isPhone;
+  const isLinux = /Linux/.test(UA) && !/Android/.test(UA);
+  document.getElementById('save-shortcut').addEventListener('click', () => {
+    const link = avatarLink();
+    if (isPhone) {
+      window.open(link, '_blank', 'noopener');
+      status(/Android/i.test(UA) ? 'Opened in a new tab. Tap the ⋮ menu, then “Add to Home screen”.' : 'Opened in a new tab. Tap Share, then “Add to Home Screen”.');
+      return;
+    }
+    const iconURL = new URL('icons/favicon.ico', location.href.split('#')[0]).href;
+    const xmlEsc = (v) => v.replace(/&/g, '&amp;');
+    let name, body;
+    if (isMac) {
+      name = 'My avatar.webloc';
+      body = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>URL</key><string>${xmlEsc(link)}</string></dict></plist>\n`;
+    } else if (isLinux) {
+      name = 'My avatar.desktop';
+      body = `[Desktop Entry]\nType=Link\nName=My avatar\nURL=${link}\nIcon=${iconURL}\n`;
+    } else {
+      name = 'My avatar.url';
+      body = `[InternetShortcut]\r\nURL=${link}\r\nIconFile=${iconURL}\r\nIconIndex=0\r\n`;
+    }
+    const url = URL.createObjectURL(new Blob([body], { type: 'application/octet-stream' }));
+    download(name, url); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    status(`“${name}” is in your Downloads folder. Drag it to your desktop, then double-click it to open your avatar.`);
+  });
+  // on the standalone page, the tab icon shows the avatar's face, so bookmarks get it too
+  let iconTimer = null;
+  function updateFavicon() {
+    if (window.top !== window.self) return;
+    clearTimeout(iconTimer);
+    iconTimer = setTimeout(() => {
+      const st = clone(S); st.patches = []; st.colors.bg = 'transparent';
+      const svg = fullSVG(st, false);
+      const [x, y, w] = /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
+      const crop = svg.replace(/viewBox="[^"]+"/, `viewBox="${x + w * 0.15} ${y} ${w * 0.7} ${w * 0.7}" width="64" height="64"`);
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas'); c.width = c.height = 64; c.getContext('2d').drawImage(img, 0, 0, 64, 64);
+        try { document.getElementById('favicon').href = c.toDataURL('image/png'); } catch (e) {}
+      };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(crop);
+    }, 600);
+  }
   document.getElementById('start-over').addEventListener('click', () => {
     if (!confirm('Start over with a new avatar? Your current one will be replaced.')) return;
-    S = clone(DEFAULT); selectedPatch = null; save(); render(); renderTab(); status('Started over.');
+    S = clone(DEFAULT); S.id = newId(); selectedPatch = null; save(); render(); renderTab(); status('Started over.');
   });
   function copyText(text, msg) {
     const done = () => status(msg);
@@ -675,13 +725,23 @@
   document.querySelector('.about').addEventListener('click', (e) => {
     const b = e.target.closest('[data-copy]'); if (b) copyText(document.getElementById(b.dataset.copy).textContent, 'Copied.');
   });
-  const m = /#avatar=([\w-]+)/.exec(location.hash);
-  if (m) {
-    try {
-      const s = JSON.parse(fromB64(m[1]));
-      if (s && s.body && s.colors) { S = Object.assign(clone(DEFAULT), s); S.colors = Object.assign(clone(DEFAULT.colors), s.colors); save(); status('Avatar loaded from your link.'); }
-    } catch (e) { status('That avatar link could not be read.'); }
+  function applyHashAvatar() {
+    const m = /#avatar=([\w-]+)/.exec(location.hash);
+    if (m) {
+      try {
+        const s = JSON.parse(fromB64(m[1]));
+        if (s && s.body && s.colors) {
+          if (s.id && s.id === S.id && (S.t || 0) >= (s.t || 0)) status('Welcome back. This is the latest version of your avatar.');
+          else { S = Object.assign(clone(DEFAULT), s); S.colors = Object.assign(clone(DEFAULT.colors), s.colors); save(); status('Welcome back. Your avatar is loaded.'); }
+        }
+      } catch (e) { status('That avatar link could not be read.'); }
+      // drop the snapshot from the address so a reload shows the latest changes
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    }
   }
+  applyHashAvatar();
+  // a shortcut opened in a tab that already shows the tool changes only the # part
+  window.addEventListener('hashchange', () => { if (/#avatar=/.test(location.hash)) { applyHashAvatar(); selectedPatch = null; render(); renderTab(); } });
 
   render(); renderTab();
   if (ADMIN) status('Layer checker is on. Visitors never see it.');
