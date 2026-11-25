@@ -87,7 +87,9 @@
     PATCHES = defs.filter((p) => p && p.id && (p.svg || p.src)).map((p) => {
       const src = p.src ? new URL(p.src, base).href : null;
       // tilt: false keeps a patch upright, for marks whose rules forbid angling them
-      return { id: String(p.id), name: String(p.name || p.id), svg: p.svg, src, w: 120, h: 120, noTilt: p.tilt === false,
+      // scale: starting size relative to a chest badge; center: start in the middle of the chest
+      const scale = Math.min(4, Math.max(0.3, Number(p.scale) || 1));
+      return { id: String(p.id), name: String(p.name || p.id), svg: p.svg, src, w: 120, h: 120, noTilt: p.tilt === false, lines: p.lines !== false, scale, center: p.center === true,
         href: p.svg ? 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(p.svg))) : src };
     });
     PATCHES.forEach((p) => {
@@ -104,7 +106,7 @@
   if (remote && (/^https:\/\//i.test(remote) || (devHost && /^http:\/\/(localhost|127\.0\.0\.1)[:/]/i.test(remote)))) {
     fetch(remote).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then((j) => {
-        const defs = (Array.isArray(j) ? j : j.patches || []).map((p) => ({ id: p.id, name: p.name, src: p.src, tilt: p.tilt })); // remote lists may only point to files
+        const defs = (Array.isArray(j) ? j : j.patches || []).map((p) => ({ id: p.id, name: p.name, src: p.src, tilt: p.tilt, lines: p.lines, scale: p.scale, center: p.center })); // remote lists may only point to files
         addPatches(defs, remote); render(); renderTab();
       })
       .catch(() => { addPatches(window.PEEP_PATCHES || [], location.href); status('Couldn’t load this site’s patches, so the standard ones are shown.'); renderTab(); });
@@ -341,7 +343,7 @@
     out += g('hair', st.hair); out += g('face', faceOf(st)); out += g('beard', st.beard); out += g('mask', st.mask); out += g('accessory', st.accessory);
     return out;
   }
-  function patchesSVG(st, withSel) {
+  function patchesSVG(st, withSel, after = () => '') {
     const [nx, ny, s] = neckPoint(st.view, st.body[st.view]);
     return st.patches.map((pt, i) => {
       const p = patchById(pt.pid); if (!p) return '';
@@ -352,7 +354,7 @@
         (p.noTilt ? '' : `<line class="sel-line" x1="0" y1="${-h / 2 - gap}" x2="0" y2="${-h / 2 - gap - r * 2.2}"/>` +
         `<circle class="handle" data-handle="rotate" cx="0" cy="${-h / 2 - gap - r * 2.2}" r="${r}"><title>Drag to tilt</title></circle>`) +
         `<circle class="handle" data-handle="resize" cx="${w / 2 + gap}" cy="${h / 2 + gap}" r="${r}"><title>Drag to resize</title></circle>` : '';
-      return `<g class="patch" data-i="${i}" transform="translate(${x} ${y}) rotate(${rot})"><image href="${p.href}" x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}"/>${sel}</g>`;
+      return `<g class="patch" data-i="${i}" transform="translate(${x} ${y}) rotate(${rot})"><image href="${p.href}" x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}"/>${sel}</g>${after(i)}`;
     }).join('');
   }
   // what each outfit's colors are called, and which color its black garment takes
@@ -362,7 +364,24 @@
     const { str } = headT(view, body);
     const g = garment(view, body), inkColor = g.ink ? st.colors[g.ink.key] : null;
     const tint = inkColor && !isInk(inkColor) ? tintLayer(`${view}-${body}`, part, inkColor, g.ink.maxY, g.ink.minY, g.ink.key, g.ink.minX, g.ink.maxX) : '';
-    return `<g data-layer="body">${paint(part.svg, st.colors)}${tint}</g><g data-layer="patches">${patchesSVG(st, withSel)}</g><g data-layer="head" transform="${str}">${headSVG(st)}</g>`;
+    return `<g data-layer="body">${paint(part.svg, st.colors)}${tint}</g><g data-layer="patches">${patchesSVG(st, withSel, (i) => patchLines(st, part, tint, `${view}-${body}`, i))}</g><g data-layer="head" transform="${str}">${headSVG(st)}</g>`;
+  }
+  // The outfit's ink lines (zipper, seams, folds) drawn again over the patches, so a print sits
+  // under them like it's on the fabric. Only the ink that shows is used (later fills cover the
+  // rest), it's kept to the patch's box, and the outfit's color tint goes back on top of it.
+  // Drawn right after patch i, so a patch placed over it covers its lines.
+  function patchLines(st, part, tint, key, i) {
+    const [nx, ny, s] = neckPoint(st.view, st.body[st.view]), n = (v) => v.toFixed(1);
+    const pt = st.patches[i], p = patchById(pt.pid);
+    if (!p || p.lines === false) return '';
+    const w = pt.size * s, h = w * (p.h / p.w), rot = p.noTilt ? 0 : pt.rot || 0;
+    const boxes = `<rect x="${n(-w / 2)}" y="${n(-h / 2)}" width="${n(w)}" height="${n(h)}" transform="translate(${n(nx + pt.dx * s)} ${n(ny + pt.dy * s)}) rotate(${rot})"/>`;
+    const [vx, vy, vw, vh] = (part.viewBox || `0 0 ${part.w} ${part.h}`).split(' ').map(Number);
+    // ids shared by every copy of this outfit with patches in the same places, so duplicates match
+    let hsh = 0; for (const ch of boxes) hsh = (hsh * 31 + ch.charCodeAt(0)) | 0;
+    const id = `plk-${key}`, cid = `plc-${key}-${(hsh >>> 0).toString(36)}`;
+    return `<defs><mask id="${id}" maskUnits="userSpaceOnUse" x="${vx - 60}" y="${vy - 60}" width="${vw + 120}" height="${vh + 120}">${inkMask(part.svg)}</mask><clipPath id="${cid}">${boxes}</clipPath></defs>` +
+      `<g clip-path="url(#${cid})" pointer-events="none"><rect x="${vx - 60}" y="${vy - 60}" width="${vw + 120}" height="${vh + 120}" fill="#000" mask="url(#${id})"/>${tint}</g>`;
   }
 
   // measure bounds with a hidden svg
@@ -716,7 +735,8 @@
     const ap = e.target.closest('[data-addpatch]');
     if (ap) {
       const spot = (L.patchSpot[S.view] || {})[curBody()] || { dx: 110, dy: 340, size: 110 };
-      S.patches.push({ pid: ap.dataset.addpatch, dx: spot.dx + S.patches.length * 18, dy: spot.dy + S.patches.length * 18, size: spot.size, rot: 0 });
+      const def = patchById(ap.dataset.addpatch) || {}, step = S.patches.length * 18;
+      S.patches.push({ pid: ap.dataset.addpatch, dx: (def.center ? 0 : spot.dx) + step, dy: spot.dy + step, size: Math.round(spot.size * (def.scale || 1)), rot: 0 });
       selectedPatch = S.patches.length - 1; save(); render(); renderTab(); status('Patch added. Drag it into place.'); return;
     }
     const sp = e.target.closest('[data-selpatch]');

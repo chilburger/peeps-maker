@@ -1,9 +1,13 @@
 {
   "patches": [
-    { "id": "fredonia-one-line", "name": "Fredonia logo, one line", "src": "fredonia-logo-one-line-2c-web.png", "tilt": false },
-    { "id": "fredonia-stacked", "name": "Fredonia logo, stacked", "src": "fredonia-logo-stacked-2c-web.png", "tilt": false },
-    { "id": "fredonia-stacked-blue", "name": "Fredonia logo, blue", "src": "fredonia-logo-stacked-286-web.png", "tilt": false },
-    { "id": "fredonia-stacked-black", "name": "Fredonia logo, black", "src": "fredonia-logo-stacked-black-web.png", "tilt": false },
-    { "id": "fredonia-stacked-white", "name": "Fredonia logo, white (for dark clothes)", "src": "fredonia-logo-stacked-white-web.png", "tilt": false }
+    { "id": "fredonia-one-line", "name": "Fredonia logo, one line", "src": "fredonia-logo-one-line-2c-web.png", "tilt": false, "lines": false },
+    { "id": "fredonia-stacked", "name": "Fredonia logo, stacked", "src": "fredonia-logo-stacked-2c-web.png", "tilt": false, "lines": false },
+    { "id": "fredonia-stacked-blue", "name": "Fredonia logo, blue", "src": "fredonia-logo-stacked-286-web.png", "tilt": false, "lines": false },
+    { "id": "fredonia-stacked-black", "name": "Fredonia logo, black", "src": "fredonia-logo-stacked-black-web.png", "tilt": false, "lines": false },
+    { "id": "fredonia-stacked-white", "name": "Fredonia logo, white (for dark clothes)", "src": "fredonia-logo-stacked-white-web.png", "tilt": false, "lines": false },
+    { "id": "fredonia-arch-white", "name": "FREDONIA arched letters, white", "src": "fredonia-arch-white.svg", "tilt": false, "scale": 2.6, "center": true },
+    { "id": "fredonia-arch-blue", "name": "FREDONIA arched letters, blue", "src": "fredonia-arch-blue.svg", "tilt": false, "scale": 2.6, "center": true },
+    { "id": "question-white", "name": "Question bubble, white (for dark clothes)", "src": "../../patches/question-white.svg" },
+    { "id": "question-black", "name": "Question bubble, black", "src": "../../patches/question-black.svg" }
   ]
 }
